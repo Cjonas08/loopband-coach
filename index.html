@@ -81,7 +81,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.9</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.10</span></h1>
   <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
   <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -832,9 +832,7 @@ function targetSpeed() { const s = run.w.steps[run.idx]; return clamp(round1(s.s
 function targetIncline() { const s = run.w.steps[run.idx]; return clamp(round1(s.incline + run.incOffset), -5, settings.maxIncline); }
 async function applyTargets() {
   if (!tm || !run.w || run.state !== 'running') return;
-  const now = performance.now();
-  Object.assign(enf, { lastSpeedSent: now, lastIncSent: now, prevSpeed: live.speed || 0, prevInc: live.incline,
-    reached: false, reachedInc: false, stableSince: now, stableIncSince: now, lastObs: live.speed || 0, lastObsInc: live.incline });
+  resetEnf();
   try { await tm.setSpeed(targetSpeed()); } catch (e) { log(e.message); }
   try { if (tm.canIncline !== false) await tm.setIncline(targetIncline()); } catch (e) { log(e.message); }
 }
@@ -843,25 +841,43 @@ async function applyTargets() {
       en er niet naartoe beweegt, sturen we het doel opnieuw.
    2) Had de band het doel wél bereikt en wijkt de snelheid daarna af en blijft ze stabiel, dan heeft de loper
       op de loopband zelf bijgestuurd → die snelheid overnemen en de rest van de training mee schalen. */
-const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
+const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, reachedSince: 0, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
 function detectConsoleChanges(now) {
   const s = run.w.steps[run.idx], sp = live.speed || 0;
   // --- snelheid ---
   if (Math.abs(sp - enf.lastObs) > 0.05) enf.stableSince = now;
   enf.lastObs = sp;
-  if (Math.abs(sp - targetSpeed()) <= 0.25) enf.reached = true;
-  else if (enf.reached && now - enf.stableSince >= 1500) {
-    if (sp < 0.5) {                           // band stilgezet op de loopband zelf → training pauzeren
-      cmdLog('   band staat stil (gestopt op de loopband) → training gepauzeerd');
-      pauseRun(); return true;
+  // "doel bereikt" pas als de band minstens 1 s binnen 0,25 km/h van het doel loopt
+  if (Math.abs(sp - targetSpeed()) <= 0.25) {
+    if (!enf.reachedSince) enf.reachedSince = now;
+    if (now - enf.reachedSince >= 1000 && sp >= 1.5) enf.reached = true;
+  } else {
+    enf.reachedSince = 0;
+    if (enf.reached && now - enf.stableSince >= 1500) {
+      if (sp < 0.5) {                         // band stilgezet op de loopband zelf → training pauzeren
+        cmdLog('   band staat stil (gestopt op de loopband) → training gepauzeerd');
+        pauseRun(); return true;
+      }
+      if (sp < 1.5) return false;             // opstart- of uitloopsnelheid: nooit als bijsturing zien
+      adoptConsoleSpeed(now, s, sp);
     }
-    const before = run.intensity;
-    run.intensity = clamp(sp / s.speed, 0.5, 1.5); run.spdOffset = 0;
-    cmdLog(`   snelheid aangepast op de loopband: ${sp.toFixed(1)} km/h → intensiteit ${Math.round(before * 100)}% → ${Math.round(run.intensity * 100)}% voor de rest van de training`);
-    beep(520, 150);
-    enf.lastSpeedSent = now; enf.prevSpeed = sp;
   }
-  // --- helling (geldt enkel voor de huidige stap) ---
+  return detectInclineChange(now, s);
+}
+function adoptConsoleSpeed(now, s, sp) {
+  const before = run.intensity;
+  run.intensity = clamp(sp / s.speed, 0.5, 1.5); run.spdOffset = 0;
+  cmdLog(`   snelheid aangepast op de loopband: ${sp.toFixed(1)} km/h → intensiteit ${Math.round(before * 100)}% → ${Math.round(run.intensity * 100)}% voor de rest van de training`);
+  beep(520, 150);
+  enf.lastSpeedSent = now; enf.prevSpeed = sp;
+}
+function resetEnf() {
+  const now = performance.now();
+  Object.assign(enf, { lastSpeedSent: now, lastIncSent: now, prevSpeed: live.speed || 0, prevInc: live.incline,
+    reached: false, reachedInc: false, reachedSince: 0, stableSince: now, stableIncSince: now, lastObs: live.speed || 0, lastObsInc: live.incline });
+}
+// --- helling (geldt enkel voor de huidige stap) ---
+function detectInclineChange(now, s) {
   if (live.incline != null) {
     if (Math.abs(live.incline - enf.lastObsInc) > 0.05) enf.stableIncSince = now;
     enf.lastObsInc = live.incline;
@@ -911,6 +927,7 @@ async function startRun() {
   if (run.state === 'idle' || run.state === 'done') {
     Object.assign(run, { idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, samples: [], startedAt: new Date(), announced: -1 });
   }
+  resetEnf();   // vóór de eerste tick: oude "doel bereikt"-status van een vorige training mag niet blijven hangen
   run.state = 'running'; run.lastTick = performance.now(); run.lastDist = live.distance;
   await requestWakeLock();
   try { await tm.start(); } catch (e) { log(e.message); }
