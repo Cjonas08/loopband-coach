@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1216">
+<title>Loopband Coach</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<style>
+:root {
+  --bg: #0f1216; --panel: #181d23; --panel2: #20262e; --line: #2c343e;
+  --text: #e8edf2; --muted: #93a1b0; --accent: #2dd4bf; --accent2: #f97316;
+  --danger: #ef4444; --ok: #22c55e; --warn: #eab308;
+  --z1: #60a5fa; --z2: #2dd4bf; --z3: #eab308; --z4: #f97316; --z5: #ef4444;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f4f6f8; --panel: #ffffff; --panel2: #eef1f4; --line: #d7dde3;
+    --text: #12171c; --muted: #5b6875; --accent: #0d9488; --accent2: #ea580c;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; flex-wrap: wrap; }
+header h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; }
+nav { display: flex; gap: 4px; }
+nav button { background: none; border: 0; color: var(--muted); padding: 8px 12px; border-radius: 8px; font: inherit; cursor: pointer; }
+nav button.active { background: var(--panel2); color: var(--text); }
+main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.tab { display: none; } .tab.active { display: block; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; margin: 0 0 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+button.btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; font: inherit; cursor: pointer; min-height: 44px; }
+button.btn:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: #04201c; border-color: var(--accent); font-weight: 600; }
+button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+button.big { font-size: 18px; padding: 14px 20px; min-width: 64px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+textarea, input, select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; }
+textarea { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
+label { color: var(--muted); font-size: 13px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--danger); }
+.dot.on { background: var(--ok); } .dot.sim { background: var(--warn); }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); cursor: pointer; }
+.item.sel { border-color: var(--accent); }
+.item .name { flex: 1; font-weight: 600; }
+.item .meta { color: var(--muted); font-size: 13px; }
+.item .btn.mini { min-height: 36px; padding: 4px 10px; }
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 20px; max-width: min(420px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0,0,0,.55); }
+.muted { color: var(--muted); } .small { font-size: 13px; }
+.err { color: var(--danger); font-size: 13px; white-space: pre-wrap; }
+canvas { width: 100%; height: 140px; display: block; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric { background: var(--panel2); border-radius: 10px; padding: 10px; text-align: center; }
+.metric .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.metric .l { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+.step-now { font-size: 22px; font-weight: 700; }
+.step-timer { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin: 6px 0; }
+.target { font-size: 20px; color: var(--accent); font-weight: 600; }
+.progress { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin-top: 10px; }
+.progress > div { height: 100%; background: var(--accent); width: 0; }
+.steps-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.steps-table td, .steps-table th { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.steps-table tr.cur { background: var(--panel2); }
+.steps-table tr.done { color: var(--muted); }
+code { background: var(--panel2); padding: 1px 5px; border-radius: 4px; }
+pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.8</span></h1>
+  <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
+  <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
+  <nav>
+    <button data-tab="lib" class="active">Trainingen</button>
+    <button data-tab="run">Uitvoeren</button>
+    <button data-tab="set">Instellingen</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ TRAININGEN ============ -->
+<section id="tab-lib" class="tab active">
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <h2>Bibliotheek</h2>
+        <div id="libList" class="list"></div>
+        <div class="row" style="margin-top:12px">
+          <button class="btn" id="btnNew">+ Nieuwe training</button>
+          <label class="btn" style="display:inline-flex;align-items:center;cursor:pointer;color:var(--text);font-size:15px">
+            Importeer bestand (.zwo / .json / .txt)
+            <input type="file" id="fileImport" accept=".zwo,.json,.txt,.xml" multiple hidden>
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Formaat</h2>
+        <pre class="help">Titel: Intervallen 5×1000m
+Opwarmen: 10:00 @ 9 km/h 1%
+5x
+  Snel: 1000m @ 4:00/km 1%
+  Rust: 2:00 @ 7.5 km/h 0%
+Uitlopen: 8min @ 8.5 km/h</pre>
+        <p class="small muted">Duur: <code>10:00</code>, <code>8min</code>, <code>45s</code> of afstand <code>800m</code>, <code>1.5km</code>.
+          Snelheid: <code>12 km/h</code> of tempo <code>4:30/km</code>. Helling: <code>2%</code> (optioneel).
+          Herhaling: regel <code>5x</code> gevolgd door ingesprongen stappen.
+          Zwift/TrainingPeaks <code>.zwo</code> wordt omgerekend met je drempeltempo (Instellingen).</p>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Training uit instructies</h2>
+        <p class="small muted" style="margin-top:0">Typ de training zoals je coach ze opschrijft. Snelheid als tempo (<code>aan 4'00</code>, <code>4:30 min/km</code>) of in <code>km/h</code> (<code>aan 12 km/u</code>). Duur: <code>2'</code> = 2 minuten, <code>30''</code> = 30 seconden, of afstand <code>400m</code>, <code>2km</code>.</p>
+        <input id="nlTitle" placeholder="Titel (optioneel)" style="width:100%;margin-bottom:8px">
+        <textarea id="nlInput" style="min-height:90px;font-family:inherit" placeholder="opwarmen aan 5'00 gedurende 10 minuten. 5x 2' snel aan 4'00 met 1 minuut rust aan 10'00; cd aan 5'00 gedurende 10'"></textarea>
+        <div id="nlMsg" class="small" style="margin-top:6px"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="btnMic">🎤 Inspreken</button>
+          <button class="btn primary" id="btnNl">Zet om naar training</button>
+          <span id="micState" class="small muted"></span>
+        </div>
+      </div>
+      <div class="card" id="editorCard">
+        <h2>Editor <span id="dirty" style="color:var(--warn);text-transform:none;letter-spacing:0"></span></h2>
+        <p class="small muted" style="margin-top:-6px">Klik op ✏️ bij een training in de bibliotheek om ze hier aan te passen, en druk daarna op Opslaan.</p>
+        <textarea id="editor" spellcheck="false"></textarea>
+        <div id="parseErr" class="err"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" id="btnSave">Opslaan</button>
+          <button class="btn" id="btnLoad">Laden om uit te voeren →</button>
+          <button class="btn" id="btnExportJson">Exporteer JSON</button>
+          <button class="btn danger" id="btnDelete">Verwijder</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Voorbeeld</h2>
+        <canvas id="previewChart"></canvas>
+        <p id="previewSummary" class="small muted"></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ UITVOEREN ============ -->
+<section id="tab-run" class="tab">
+  <div class="card">
+    <div class="row">
+      <button class="btn primary" id="btnConnect">Verbind loopband</button>
+      <button class="btn" id="btnConnectHr">Verbind hartslagband</button>
+      <button class="btn" id="btnSim">Simulator gebruiken</button>
+      <span id="tmInfo" class="small muted"></span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label for="runSelect" style="font-size:15px;color:var(--text)">Training:</label>
+      <select id="runSelect" style="flex:1;min-width:200px;min-height:44px"></select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <div class="muted small" id="runName">Geen training geladen</div>
+        <div class="step-now" id="stepLabel">—</div>
+        <div class="target" id="stepTarget"></div>
+      </div>
+      <div style="text-align:right">
+        <div class="muted small">Resterend in stap</div>
+        <div class="step-timer" id="stepRemain">00:00</div>
+        <div class="muted small" id="nextStep"></div>
+      </div>
+    </div>
+    <div class="progress"><div id="totalProgress"></div></div>
+    <canvas id="runChart" style="margin-top:12px"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="metrics">
+      <div class="metric"><div class="v" id="mSpeed">0.0</div><div class="l">km/h</div></div>
+      <div class="metric"><div class="v" id="mPace">--:--</div><div class="l">min/km</div></div>
+      <div class="metric"><div class="v" id="mIncline">0.0</div><div class="l">helling %</div></div>
+      <div class="metric"><div class="v" id="mHr">--</div><div class="l">hartslag</div></div>
+      <div class="metric"><div class="v" id="mTime">00:00</div><div class="l">totale tijd</div></div>
+      <div class="metric"><div class="v" id="mDist">0.00</div><div class="l">km</div></div>
+      <div class="metric"><div class="v" id="mRemain">00:00</div><div class="l">resterend</div></div>
+      <div class="metric"><div class="v" id="mIntensity">100%</div><div class="l">intensiteit</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:center">
+      <button class="btn big" id="btnPrev" title="Vorige stap">⏮</button>
+      <button class="btn big primary" id="btnStart">▶ Start</button>
+      <button class="btn big" id="btnPause">⏸ Pauze</button>
+      <button class="btn big" id="btnNext" title="Volgende stap">⏭</button>
+      <button class="btn big danger" id="btnStop">⏹ Stop</button>
+    </div>
+    <div class="row" style="justify-content:center;margin-top:12px">
+      <span class="muted small">Snelheid nu:</span>
+      <button class="btn" id="spdDown">−0.5</button>
+      <button class="btn" id="spdUp">+0.5</button>
+      <span class="muted small" style="margin-left:12px">Helling nu:</span>
+      <button class="btn" id="incDown">−0.5%</button>
+      <button class="btn" id="incUp">+0.5%</button>
+      <span class="muted small" style="margin-left:12px">Hele training:</span>
+      <button class="btn" id="intDown">−2%</button>
+      <button class="btn" id="intUp">+2%</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Exporteren</h2>
+    <p id="lastRunInfo" class="small muted" style="margin-top:0"></p>
+    <div class="row">
+      <span id="stravaButtons" class="row"></span>
+      <button class="btn" id="btnTcx" disabled>Download TCX (TrainingPeaks)</button>
+    </div>
+    <p id="stravaStatus" class="small" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="card">
+    <h2>Stappen</h2>
+    <table class="steps-table" id="stepsTable"></table>
+  </div>
+</section>
+
+<!-- ============ INSTELLINGEN ============ -->
+<section id="tab-set" class="tab">
+  <div class="card">
+    <h2>Training</h2>
+    <div class="row">
+      <div class="field"><label>Drempeltempo (min/km) voor .zwo-import</label><input id="setThreshold" value="4:30" size="8"></div>
+      <div class="field"><label>Standaard helling (%)</label><input id="setIncline" type="number" step="0.5" value="1" style="width:90px"></div>
+      <div class="field"><label>Max. snelheid (km/h)</label><input id="setMaxSpeed" type="number" step="0.5" value="18" style="width:90px"></div>
+      <div class="field"><label>Max. helling (%)</label><input id="setMaxIncline" type="number" step="0.5" value="15" style="width:90px"></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label><input type="checkbox" id="setBeep" checked> Piepjes bij stapwissel</label>
+      <label><input type="checkbox" id="setVoice" checked> Gesproken aankondiging</label>
+      <label><input type="checkbox" id="setAllDevices"> Toon alle Bluetooth-apparaten (als loopband niet verschijnt)</label>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Strava</h2>
+    <div id="stravaProfiles" class="list"></div>
+    <details style="margin-top:12px">
+      <summary class="small" style="cursor:pointer">Hoe krijg ik een Client ID en Secret? (eenmalig per persoon)</summary>
+      <ol class="small muted">
+        <li>Log in op Strava met het account van die persoon en ga naar <b>strava.com/settings/api</b>.</li>
+        <li>Maak een applicatie: naam bv. "Loopband Coach", categorie "Training", website mag iets willekeurigs zijn.</li>
+        <li>Bij <b>Authorization Callback Domain</b> vul je in: <code id="stravaCallback">localhost</code></li>
+        <li>Kopieer <b>Client ID</b> en <b>Client Secret</b> hierboven bij de juiste persoon en klik <b>Koppel met Strava</b>.</li>
+      </ol>
+      <p class="small muted">De gegevens blijven alleen in deze browser. Op een ander toestel (gsm/tablet) moet je één keer opnieuw koppelen.</p>
+    </details>
+  </div>
+  <div class="card">
+    <h2>Diagnose loopband</h2>
+    <p class="small muted">Na verbinden zie je hier wat de loopband via FTMS ondersteunt.</p>
+    <pre class="help" id="diag">Nog niet verbonden.</pre>
+    <p class="small muted">Logboek van opdrachten naar de loopband (nieuwste bovenaan):</p>
+    <pre class="help" id="cmdLog" style="max-height:260px;overflow:auto">—</pre>
+  </div>
+  <div class="card">
+    <h2>Over</h2>
+    <p class="small muted">Stuurt de loopband aan via het standaard Bluetooth FTMS-protocol (Fitness Machine Service), hetzelfde dat
+      Zwift en Kinomap gebruiken. Werkt in Chrome of Edge op Windows, Android en ChromeOS. Op iPhone/iPad werkt Web Bluetooth niet in Safari —
+      gebruik daar de Bluefy-browser. Blijf altijd zelf alert: de noodstop van de loopband blijft leidend.</p>
+  </div>
+</section>
+</main>
+
+<dialog id="incDlg">
+  <h3 style="margin:0 0 8px">Helling kiezen</h3>
+  <p id="incDlgText" class="small"></p>
+  <div class="row">
+    <button class="btn big" data-inc="0">0%</button>
+    <button class="btn big" data-inc="0.5">0,5%</button>
+    <button class="btn big primary" data-inc="1">1%</button>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <input id="incOther" inputmode="decimal" placeholder="Andere, bv. 2" style="width:130px">
+    <button class="btn" id="incOk">OK</button>
+    <button class="btn" id="incCancel" style="margin-left:auto">Annuleren</button>
+  </div>
+  <p class="small muted" style="margin-bottom:0">Stappen waar je wél een helling opgaf, blijven ongewijzigd.</p>
+</dialog>
+<script>
+'use strict';
+/* ====================== Helpers ====================== */
+const $ = id => document.getElementById(id);
+const fmtTime = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(ss).padStart(2, '0'); };
+const paceFromSpeed = kmh => kmh > 0.5 ? fmtTime(3600 / kmh) : '--:--';
+const speedFromPace = str => { const m = /^(\d+):(\d{2})$/.exec(String(str).trim()); return m ? 3600 / (+m[1] * 60 + +m[2]) : null; };
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const round1 = v => Math.round(v * 10) / 10;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+/* ====================== Settings ====================== */
+const settings = Object.assign({ threshold: '4:30', incline: 1, maxSpeed: 18, maxIncline: 15, beep: true, voice: true, allDevices: false },
+  store.get('settings', {}));
+function bindSettings() {
+  const map = { setThreshold: 'threshold', setIncline: 'incline', setMaxSpeed: 'maxSpeed', setMaxIncline: 'maxIncline', setBeep: 'beep', setVoice: 'voice', setAllDevices: 'allDevices' };
+  for (const [id, key] of Object.entries(map)) {
+    const el = $(id);
+    if (el.type === 'checkbox') el.checked = settings[key]; else el.value = settings[key];
+    el.addEventListener('change', () => {
+      settings[key] = el.type === 'checkbox' ? el.checked : (el.type === 'number' ? parseFloat(el.value) : el.value);
+      store.set('settings', settings);
+    });
+  }
+}
+
+/* ====================== Workout parsing ====================== */
+// Interne vorm: { name, steps: [{ label, kind: 'time'|'distance', value, speed, incline }] }
+function parseStepLine(line, lineNo) {
+  let label = '', rest = line.trim().replace(/^[-•*]\s*/, '');
+  const lm = /^([A-Za-zÀ-ÿ][^:@]*?):\s+(.*)$/.exec(rest);
+  if (lm) { label = lm[1].trim(); rest = lm[2]; }
+  let speed = null, incline = null, kind = null, value = null;
+  // tempo mm:ss/km
+  rest = rest.replace(/(\d+):(\d{2})\s*\/\s*km/i, (_, m, s) => { speed = 3600 / (+m * 60 + +s); return ' '; });
+  rest = rest.replace(/(\d+(?:[.,]\d+)?)\s*km\/?h/i, (_, v) => { speed = parseFloat(v.replace(',', '.')); return ' '; });
+  rest = rest.replace(/(-?\d+(?:[.,]\d+)?)\s*%/, (_, v) => { incline = parseFloat(v.replace(',', '.')); return ' '; });
+  let m;
+  if ((m = /(\d+):(\d{2})(?::(\d{2}))?/.exec(rest))) {
+    kind = 'time'; value = m[3] != null ? +m[1] * 3600 + +m[2] * 60 + +m[3] : +m[1] * 60 + +m[2];
+  } else if ((m = /(\d+(?:[.,]\d+)?)\s*(min|sec|s|km|m|u|h)\b/i.exec(rest))) {
+    const v = parseFloat(m[1].replace(',', '.')), u = m[2].toLowerCase();
+    if (u === 'min') { kind = 'time'; value = v * 60; }
+    else if (u === 's' || u === 'sec') { kind = 'time'; value = v; }
+    else if (u === 'u' || u === 'h') { kind = 'time'; value = v * 3600; }
+    else if (u === 'km') { kind = 'distance'; value = v * 1000; }
+    else { kind = 'distance'; value = v; }
+  }
+  if (!kind || !value) throw new Error(`Regel ${lineNo}: geen duur of afstand gevonden`);
+  if (speed == null) throw new Error(`Regel ${lineNo}: geen snelheid (km/h) of tempo (/km) gevonden`);
+  return { label: label || (speed >= 11 ? 'Interval' : 'Rustig'), kind, value, speed: round1(speed), incline: incline ?? settings.incline };
+}
+
+function parseText(text) {
+  const lines = text.split(/\r?\n/);
+  let name = 'Training', steps = [], block = null;
+  const flush = () => {
+    if (!block) return;
+    if (!block.steps.length) throw new Error(`Herhaling ${block.n}x op regel ${block.line} heeft geen stappen`);
+    for (let r = 1; r <= block.n; r++) block.steps.forEach(s => steps.push({ ...s, label: `${s.label} ${r}/${block.n}` }));
+    block = null;
+  };
+  lines.forEach((raw, i) => {
+    const line = raw.replace(/#(?!\s*\d).*$/, '');
+    if (!line.trim()) return;
+    const t = /^\s*(titel|title|naam)\s*:\s*(.+)$/i.exec(line);
+    if (t) { name = t[2].trim(); return; }
+    const rep = /^\s*(\d+)\s*[x×]\s*:?\s*$/i.exec(line);
+    if (rep) { flush(); block = { n: +rep[1], steps: [], line: i + 1 }; return; }
+    const indented = /^(\s+|\s*[-•*])/.test(raw);
+    if (block && !indented) flush();
+    const step = parseStepLine(line, i + 1);
+    (block ? block.steps : steps).push(step);
+  });
+  flush();
+  if (!steps.length) throw new Error('Geen stappen gevonden');
+  return { name, steps };
+}
+
+function toText(w) {
+  const out = [`Titel: ${w.name}`];
+  for (const s of w.steps) {
+    const dur = s.kind === 'time' ? fmtTime(s.value) : (s.value >= 1000 ? (s.value / 1000) + 'km' : s.value + 'm');
+    out.push(`${s.label.replace(/:/g, ' ')}: ${dur} @ ${s.speed} km/h${s.incline != null ? ' ' + s.incline + '%' : ''}`);
+  }
+  return out.join('\n');
+}
+
+// Zwift/TrainingPeaks .zwo — voor lopen is "Power" een fractie van de drempelsnelheid
+function parseZwo(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Ongeldig .zwo-bestand');
+  const thr = speedFromPace(settings.threshold) || 13.3;
+  const name = doc.querySelector('name')?.textContent?.trim() || 'ZWO training';
+  const byDist = (doc.querySelector('durationType')?.textContent || '').toLowerCase() === 'distance';
+  const wo = doc.querySelector('workout');
+  if (!wo) throw new Error('Geen <workout> in .zwo');
+  const steps = [], inc = null;   // .zwo kent geen helling → wordt bij import gevraagd
+  const num = (el, a, d = 0) => { const v = parseFloat(el.getAttribute(a)); return isNaN(v) ? d : v; };
+  const push = (label, value, frac) => steps.push({ label, kind: byDist ? 'distance' : 'time', value, speed: round1(frac * thr), incline: inc });
+  for (const el of wo.children) {
+    const tag = el.tagName;
+    const dur = num(el, 'Duration');
+    if (tag === 'SteadyState') push('Steady', dur, num(el, 'Power', 0.7));
+    else if (tag === 'Warmup' || tag === 'Cooldown' || tag === 'Ramp') {
+      const lo = num(el, 'PowerLow', 0.6), hi = num(el, 'PowerHigh', 0.7);
+      const label = tag === 'Warmup' ? 'Opwarmen' : tag === 'Cooldown' ? 'Uitlopen' : 'Ramp';
+      const n = Math.max(1, Math.round(dur / (byDist ? 250 : 60)));     // in stukjes van 1 min / 250 m
+      for (let i = 0; i < n; i++) push(label, dur / n, lo + (hi - lo) * (i + 0.5) / n);
+    } else if (tag === 'IntervalsT') {
+      const rep = num(el, 'Repeat', 1);
+      for (let r = 1; r <= rep; r++) {
+        push(`Interval ${r}/${rep}`, num(el, 'OnDuration'), num(el, 'OnPower', 1));
+        push(`Herstel ${r}/${rep}`, num(el, 'OffDuration'), num(el, 'OffPower', 0.6));
+      }
+    } else if (tag === 'FreeRide' || tag === 'FreeRun') push('Vrij', dur, 0.65);
+  }
+  if (!steps.length) throw new Error('Geen stappen herkend in .zwo');
+  return { name, steps: steps.filter(s => s.value > 0) };
+}
+
+function parseJson(text) {
+  const j = JSON.parse(text);
+  const w = Array.isArray(j) ? { name: 'Training', steps: j } : j;
+  if (!Array.isArray(w.steps)) throw new Error('JSON mist "steps"');
+  w.steps = w.steps.map((s, i) => {
+    const speed = s.speed ?? (s.pace ? speedFromPace(s.pace) : null);
+    const kind = s.kind || (s.distance ? 'distance' : 'time');
+    const value = s.value ?? (kind === 'distance' ? s.distance : s.duration);
+    if (!speed || !value) throw new Error(`JSON stap ${i + 1} mist snelheid/tempo of duur/afstand`);
+    return { label: s.label || 'Stap', kind, value: +value, speed: round1(+speed), incline: s.incline ?? null };
+  });
+  return { name: w.name || 'Training', steps: w.steps };
+}
+
+/* Vrije instructies (NL) → trainingstekst.
+   Bv. "opwarmen aan 5'00 gedurende 1minuut. 5x 2' snel aan 4'00 met 1minuut rust aan 10'00; cd aan 5'00"
+   Conventie: "aan/@/tempo X'YY" = tempo per km; "N'" of "N min" = duur; "N''" / "N sec" = seconden. */
+const NL_DEFAULTS = { warm: 600, cool: 600 };
+function nlLabel(seg) {
+  if (/\b(opwarm\w*|warm[- ]?up|wu|inlopen)\b/.test(seg)) return ['Opwarmen', 'warm'];
+  if (/\b(cd|cool[- ]?down|uitlop\w*|afkoel\w*|uitwandel\w*)\b/.test(seg)) return ['Uitlopen', 'cool'];
+  if (/\b(rust|herstel|recup\w*|wandel\w*|dribbel\w*|jog)\b/.test(seg)) return ['Rust', 'rest'];
+  if (/\b(drempel|threshold)\b/.test(seg)) return ['Drempel', 'work'];
+  if (/\b(snel|hard|interval\w*|versnelling\w*|sprint\w*)\b/.test(seg)) return ['Snel', 'work'];
+  if (/\b(duur|rustig|easy|basis)\b/.test(seg)) return ['Duurloop', 'work'];
+  return ['', 'work'];
+}
+function nlStep(seg, warnings, defaultName = 'Stap') {
+  let s = ' ' + seg + ' ';
+  const [label, role] = nlLabel(s);
+  const name = label || defaultName;
+  let speedTxt = null, m;
+  // snelheid in km/h
+  if ((m = /(\d+(?:[.,]\d+)?)\s*(?:km\/?u|km\/?h|kmh|kmu)\b/.exec(s))) { speedTxt = parseFloat(m[1].replace(',', '.')) + ' km/h'; s = s.replace(m[0], ' '); }
+  // tempo: "aan 4'00", "@ 4:30", "tempo 5'15", of "4'30/km"
+  if (!speedTxt && ((m = /(?:\baan|@|\btempo|\bpace|\bop)\s*(\d{1,2})\s*['":.,]\s*(\d{2})(?:\s*(?:\/\s*km|min\s*\/\s*km|min\s*per\s*km|per\s*km))?/.exec(s)) ||
+                    (m = /(\d{1,2})\s*['":.,]\s*(\d{2})\s*(?:\/\s*km|min\s*\/\s*km|min\s*per\s*km|per\s*km)/.exec(s)))) {
+    speedTxt = `${+m[1]}:${m[2]}/km`; s = s.replace(m[0], ' ');
+  }
+  // helling
+  let incline = null;
+  if ((m = /(-?\d+(?:[.,]\d+)?)\s*%/.exec(s)) || (m = /helling\s*(?:van\s*)?(-?\d+(?:[.,]\d+)?)/.exec(s))) { incline = parseFloat(m[1].replace(',', '.')); s = s.replace(m[0], ' '); }
+  // duur of afstand
+  let dur = null;
+  if ((m = /(\d+(?:[.,]\d+)?)\s*km\b/.exec(s))) dur = parseFloat(m[1].replace(',', '.')) + 'km';
+  else if ((m = /(\d+)\s*(?:m|meter)\b/.exec(s))) dur = m[1] + 'm';
+  else if ((m = /(\d+)\s*['’]\s*(\d{2})(?!\d)/.exec(s)) || (m = /(\d+):(\d{2})(?!\d)/.exec(s))) dur = `${+m[1]}:${m[2]}`;
+  else if ((m = /(\d+(?:[.,]\d+)?)\s*(?:"|''|s\b|sec\w*|seconde\w*)/.exec(s))) dur = parseFloat(m[1].replace(',', '.')) + 's';
+  else if ((m = /(\d+(?:[.,]\d+)?)\s*(?:'|min\w*|minu\w*)/.exec(s))) dur = parseFloat(m[1].replace(',', '.')) + 'min';
+  else if ((m = /(\d+(?:[.,]\d+)?)\s*(?:u\b|uur)/.exec(s))) dur = parseFloat(m[1].replace(',', '.')) * 60 + 'min';
+  if (!dur) {
+    if (role === 'warm' || role === 'cool') {
+      dur = fmtTime(NL_DEFAULTS[role]);
+      warnings.push(`"${seg.trim()}": geen duur gevonden → ${dur} aangenomen.`);
+    } else throw new Error(`Geen duur of afstand gevonden in "${seg.trim()}"`);
+  }
+  if (!speedTxt) {
+    if (role === 'rest') { speedTxt = '5 km/h'; warnings.push(`"${seg.trim()}": geen tempo → wandelen aan 5 km/h aangenomen.`); }
+    else throw new Error(`Geen tempo of snelheid gevonden in "${seg.trim()}"`);
+  }
+  return `${name}: ${dur} @ ${speedTxt}${incline != null ? ' ' + incline + '%' : ''}`;
+}
+/* Gesproken taal (spraakherkenning) → schrijfwijze die nlStep begrijpt.
+   Bv. "vijf keer twee minuten snel aan vier minuten dertig per kilometer met één minuut rust aan acht kilometer per uur" */
+const NL_NUM = { nul: 0, een: 1, 'één': 1, twee: 2, drie: 3, vier: 4, vijf: 5, zes: 6, zeven: 7, acht: 8, negen: 9, tien: 10, elf: 11,
+  twaalf: 12, dertien: 13, veertien: 14, vijftien: 15, zestien: 16, zeventien: 17, achttien: 18, negentien: 19 };
+const NL_TENS = { twintig: 20, dertig: 30, veertig: 40, vijftig: 50, zestig: 60 };
+function wordsToDigits(t) {
+  const units = 'een|één|twee|drie|vier|vijf|zes|zeven|acht|negen', tens = Object.keys(NL_TENS).join('|');
+  t = t.replace(new RegExp(`\\b(${units})(?:en|ën)(${tens})\\b`, 'g'), (_, u, d) => NL_TENS[d] + NL_NUM[u]);
+  t = t.replace(new RegExp(`\\b(${tens})\\b`, 'g'), (_, d) => NL_TENS[d]);
+  // "een" alleen omzetten als er een eenheid of "keer" op volgt (anders is het een lidwoord)
+  t = t.replace(/\b(een|één)\s+(?=(?:minuut|minuten|min|seconde|seconden|sec|kilometer|km|keer|maal|x)\b)/g, '1 ');
+  t = t.replace(new RegExp(`\\b(${Object.keys(NL_NUM).filter(k => k !== 'een' && k !== 'één').join('|')})\\b`, 'g'), (_, w) => NL_NUM[w]);
+  return t;
+}
+function normalizeSpoken(t) {
+  t = wordsToDigits(t.replace(/[ée]én|één/g, 'een'));
+  t = t.replace(/\banderhalve minuut\b/g, '90 sec').replace(/\b(?:een )?halve minuut\b/g, '30 sec')
+       .replace(/\b(\d+)\s*en een halve minuut\b/g, (_, n) => (+n * 60 + 30) + ' sec')
+       .replace(/\b(\d+)\s*en een halve? (?:kilometer|km)\b/g, (_, n) => (+n + 0.5) + ' km');
+  t = t.replace(/\b(?:kilometer|km)\s*(?:per|\/)\s*(?:uur|u)\b/g, 'km/h');
+  t = t.replace(/\b(?:minuten|minuut|min)?\s*per\s*(?:kilometer|km)\b/g, '/km');
+  t = t.replace(/\b(\d+)\s*procent\b/g, '$1%').replace(/\bmaal\b/g, 'keer');
+  t = t.replace(/\b(warming[- ]?up)\b/g, 'opwarmen').replace(/\b(cooling[- ]?down)\b/g, 'cd');
+  // tempo na "aan": "aan (een tempo van) 4 minuten 30" / "aan 4 30" / "aan 4 minuten" → aan 4:30
+  t = t.replace(/\baan\s+(?:een\s+)?(?:tempo\s+van\s+)?(\d{1,2})(?:\s+|\s*(?:minuten|minuut|min)\s*(?:en\s+)?)(\d{1,2})(?![\d:']|[.,]\d)(?:\s*(?:seconden|sec)\b)?(?!\s*(?:km\/h|km|m\b|meter|%|keer|x\b))/g,
+    (m, a, b) => `aan ${a}:${b.padStart(2, '0')}`);
+  t = t.replace(/\baan\s+(?:een\s+)?(?:tempo\s+van\s+)?(\d{1,2})\s*(?:minuten|minuut|min)\b/g, 'aan $1:00');
+  t = t.replace(/\baan\s+(\d{1,2})\s*\/km/g, 'aan $1:00/km');
+  // duur "2 minuten 30 (seconden)" → 2:30
+  t = t.replace(/\b(\d+)\s*(?:minuten|minuut|min)\s*(?:en\s+)?(\d{1,2})\s*(?:seconden|sec)\b/g, (m, a, b) => `${a}:${b.padStart(2, '0')}`);
+  t = t.replace(/\b(\d+)\s*kilometer\b/g, '$1 km');
+  t = t.replace(/\b(vervolgens|als laatste|ten slotte|om af te sluiten)\b/g, ';');
+  return t;
+}
+
+function instructionsToText(input, title) {
+  const warnings = [];
+  const t = normalizeSpoken(input.toLowerCase().replace(/[’‘´`′]/g, "'").replace(/[″“”]/g, '"').replace(/''/g, '"'));
+  const segs = t.split(/;|\n|\.(?!\d)|,(?!\d)|\bdaarna\b|\ben dan\b|\bgevolgd door\b|\bnadien\b|\btot slot\b/).map(x => x.trim()).filter(Boolean);
+  const out = [`Titel: ${title || 'Training ' + new Date().toLocaleDateString('nl-BE')}`];
+  for (const seg of segs) {
+    const rm = /(?:^|\s)(\d+)\s*(?:x|×|keer)(?=\s|\d|$)/.exec(seg);
+    if (rm) {
+      const body = (seg.slice(0, rm.index) + ' ' + seg.slice(rm.index + rm[0].length)).trim();
+      const parts = body.split(/\s+(?:met|en|\+|telkens|gevolgd door)\s+|\s*\+\s*/).filter(p => /\d/.test(p));
+      if (!parts.length) throw new Error(`Herhaling zonder inhoud: "${seg}"`);
+      out.push(`${rm[1]}x`);
+      parts.forEach((p, i) => out.push('  ' + nlStep(p, warnings, i === 0 ? 'Interval' : 'Rust')));
+    } else out.push(nlStep(seg, warnings));
+  }
+  const source = out.join('\n');
+  parseText(source); // valideer
+  return { source, warnings };
+}
+
+function stepSeconds(s) { return s.kind === 'time' ? s.value : s.value / (s.speed / 3.6); }
+function workoutTotals(w) {
+  let t = 0, d = 0;
+  for (const s of w.steps) { const sec = stepSeconds(s); t += sec; d += s.kind === 'distance' ? s.value : sec * s.speed / 3.6; }
+  return { t, d };
+}
+
+/* ====================== Library ====================== */
+const SAMPLE = `Titel: Voorbeeld — 5×3 min drempel
+Opwarmen: 10:00 @ 9 km/h 1%
+5x
+  Drempel: 3:00 @ 4:10/km 1%
+  Herstel: 1:30 @ 8 km/h 0%
+Uitlopen: 5min @ 8.5 km/h 0%`;
+let library = store.get('library', null);
+if (!library) library = [{ id: 'sample', source: SAMPLE }];
+let selectedId = library[0]?.id;
+const saveLib = () => store.set('library', library);
+
+function renderRunSelect() {
+  const sel = $('runSelect'), cur = run.libId;
+  sel.innerHTML = '<option value="">— kies een training —</option>';
+  for (const item of library) {
+    let label;
+    try { const w = parseText(item.source), t = workoutTotals(w); label = `${w.name} (${fmtTime(t.t)} · ${(t.d / 1000).toFixed(1)} km)`; }
+    catch { continue; }
+    const o = document.createElement('option'); o.value = item.id; o.textContent = label; sel.appendChild(o);
+  }
+  sel.value = library.some(i => i.id === cur) ? cur : '';
+}
+function renderLib() {
+  renderRunSelect();
+  const el = $('libList'); el.innerHTML = '';
+  for (const item of library) {
+    let w, meta;
+    try { w = parseText(item.source); const t = workoutTotals(w); meta = `${fmtTime(t.t)} · ${(t.d / 1000).toFixed(1)} km`; }
+    catch (e) { w = { name: item.source.split('\n')[0] }; meta = 'fout in training'; }
+    const div = document.createElement('div');
+    div.className = 'item' + (item.id === selectedId ? ' sel' : '');
+    div.innerHTML = `<span class="name"></span><span class="meta"></span>
+      <button class="btn mini" data-a="edit" title="Aanpassen">✏️</button>
+      <button class="btn mini" data-a="copy" title="Kopie maken">⧉</button>
+      <button class="btn mini" data-a="run" title="Uitvoeren">▶</button>`;
+    div.querySelector('.name').textContent = w.name; div.querySelector('.meta').textContent = meta;
+    div.onclick = e => {
+      const a = e.target.closest('button')?.dataset.a;
+      if (a === 'copy') { const src = item.source.replace(/^(\s*(?:titel|title|naam)\s*:\s*)(.+)$/im, '$1$2 (kopie)'); addToLibrary(null, src); return editItem(selectedId); }
+      if (a === 'run') { try { loadRun(parseText(item.source), item.id); } catch (err) { alert(err.message); } return; }
+      editItem(item.id, a === 'edit');
+    };
+    el.appendChild(div);
+  }
+}
+/* Training openen in de editor (met waarschuwing bij niet-opgeslagen wijzigingen) */
+function isDirty() { const it = library.find(i => i.id === selectedId); return !!it && it.source !== $('editor').value; }
+function confirmDiscard() { return !isDirty() || confirm('Je hebt niet-opgeslagen wijzigingen in de editor. Toch verdergaan?'); }
+function updateDirty() { $('dirty').textContent = isDirty() ? '● niet opgeslagen' : ''; }
+function editItem(id, focus = true) {
+  if (id !== selectedId && !confirmDiscard()) return;
+  const it = library.find(i => i.id === id); if (!it) return;
+  selectedId = id; $('editor').value = it.source; renderLib(); updatePreview(); updateDirty();
+  if (focus) { $('editorCard').scrollIntoView({ behavior: 'smooth', block: 'start' }); $('editor').focus({ preventScroll: true }); }
+}
+
+/* Helling ontbreekt? → vragen: 0 / 0,5 / 1 % (of zelf invullen) */
+function isStepLine(raw) {
+  const line = raw.replace(/#(?!\s*\d).*$/, '');
+  return line.trim() && !/^\s*(titel|title|naam)\s*:/i.test(line) && !/^\s*\d+\s*[x×]\s*:?\s*$/i.test(line);
+}
+function countMissingIncline(src) { return src.split(/\r?\n/).filter(l => isStepLine(l) && !/%/.test(l)).length; }
+function fillIncline(src, pct) {
+  return src.split(/\r?\n/).map(l => isStepLine(l) && !/%/.test(l) ? l.replace(/\s*$/, ` ${pct}%`) : l).join('\n');
+}
+function askIncline(n, what) {
+  return new Promise(resolve => {
+    const dlg = $('incDlg');
+    $('incDlgText').textContent = `${what ? what + ': ' : ''}voor ${n} ${n === 1 ? 'stap' : 'stappen'} is geen helling opgegeven. Welke helling wil je gebruiken?`;
+    $('incOther').value = '';
+    const done = v => { dlg.close(); dlg.onclick = null; resolve(v); };
+    dlg.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.inc != null) done(parseFloat(b.dataset.inc));
+      else if (b.id === 'incOk') { const v = parseFloat($('incOther').value.replace(',', '.')); if (isNaN(v)) return $('incOther').focus(); done(clamp(v, -5, 20)); }
+      else if (b.id === 'incCancel') done(null);
+    };
+    dlg.oncancel = () => resolve(null);
+    dlg.showModal();
+  });
+}
+async function ensureIncline(src, what) {
+  const n = countMissingIncline(src);
+  if (!n) return src;
+  const pct = await askIncline(n, what);
+  return pct == null ? null : fillIncline(src, pct);
+}
+function updatePreview() {
+  try {
+    const w = parseText($('editor').value);
+    $('parseErr').textContent = '';
+    const t = workoutTotals(w);
+    $('previewSummary').textContent = `${w.name}: ${w.steps.length} stappen · ${fmtTime(t.t)} · ±${(t.d / 1000).toFixed(2)} km`;
+    drawChart($('previewChart'), w, -1);
+    return w;
+  } catch (e) { $('parseErr').textContent = e.message; return null; }
+}
+function addToLibrary(w, source) {
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  library.unshift({ id, source: source || toText(w) }); selectedId = id; saveLib(); renderLib();
+  $('editor').value = library[0].source; updatePreview();
+}
+
+/* ====================== Chart ====================== */
+function zoneColor(speed, maxSpeed) {
+  const r = speed / maxSpeed;
+  const v = r > .92 ? '--z5' : r > .82 ? '--z4' : r > .72 ? '--z3' : r > .6 ? '--z2' : '--z1';
+  return getComputedStyle(document.documentElement).getPropertyValue(v);
+}
+function drawChart(canvas, w, progressSec, intensity = 1) {
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); ctx.clearRect(0, 0, W, H);
+  if (!w) return;
+  const total = workoutTotals(w).t, maxS = Math.max(...w.steps.map(s => s.speed)) * 1.05, minS = Math.min(...w.steps.map(s => s.speed)) * 0.7;
+  let x = 0;
+  for (const s of w.steps) {
+    const sw = stepSeconds(s) / total * W, h = (s.speed - minS) / (maxS - minS) * (H - 18) + 10;
+    ctx.fillStyle = zoneColor(s.speed, maxS); ctx.globalAlpha = .85;
+    ctx.fillRect(x, H - h, Math.max(1, sw - 1), h); x += sw;
+  }
+  ctx.globalAlpha = 1;
+  if (progressSec >= 0) {
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, 0, progressSec / total * W, H);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text');
+    ctx.fillRect(progressSec / total * W - 1, 0, 2, H);
+  }
+}
+
+/* ====================== FTMS (Bluetooth) ====================== */
+const OPNAMES = { 0: 'controle vragen', 1: 'reset', 2: 'snelheid', 3: 'helling', 7: 'start', 8: 'stop/pauze' };
+const RESULTS = { 1: 'OK', 2: 'niet ondersteund', 3: 'ongeldige waarde', 4: 'mislukt', 5: 'geen controle' };
+const cmdLines = [];
+function cmdLog(msg) {
+  const t = new Date().toLocaleTimeString('nl-BE');
+  cmdLines.push(`${t}  ${msg}`); if (cmdLines.length > 60) cmdLines.shift();
+  const el = document.getElementById('cmdLog'); if (el) el.textContent = cmdLines.slice().reverse().join('\n');
+}
+const FTMS = 0x1826, C_FEATURE = 0x2acc, C_TREADMILL = 0x2acd, C_CONTROL = 0x2ad9, C_STATUS = 0x2ada, C_SPEEDRANGE = 0x2ad4, C_INCRANGE = 0x2ad5;
+class FtmsTreadmill {
+  constructor() { this.onData = () => {}; this.onDisconnect = () => {}; this.queue = Promise.resolve(); this.pending = null; this.name = ''; }
+  async connect(acceptAll) {
+    if (!navigator.bluetooth) throw new Error('Web Bluetooth niet beschikbaar. Gebruik Chrome/Edge (Windows/Android) of Bluefy (iOS), via https of localhost.');
+    const opts = acceptAll ? { acceptAllDevices: true, optionalServices: [FTMS] } : { filters: [{ services: [FTMS] }] };
+    this.device = await navigator.bluetooth.requestDevice(opts);
+    this.name = this.device.name || 'Loopband';
+    this.device.addEventListener('gattserverdisconnected', () => this.onDisconnect());
+    const server = await this.device.gatt.connect();
+    const svc = await server.getPrimaryService(FTMS);
+    const diag = [`Apparaat: ${this.name}`];
+    try {
+      const f = await (await svc.getCharacteristic(C_FEATURE)).readValue();
+      const feat = f.getUint32(0, true), tgt = f.getUint32(4, true);
+      this.canSpeed = !!(tgt & 1); this.canIncline = !!(tgt & 2);
+      diag.push(`Snelheid instellen: ${this.canSpeed ? 'JA' : 'nee'}`, `Helling instellen: ${this.canIncline ? 'JA' : 'nee'}`,
+        `Meldt helling: ${feat & 8 ? 'ja' : 'nee'}, afstand: ${feat & 4 ? 'ja' : 'nee'}, hartslag: ${feat & 1024 ? 'ja' : 'nee'}`);
+    } catch (e) { diag.push('Kon features niet lezen: ' + e.message); this.canSpeed = this.canIncline = true; }
+    try { const r = await (await svc.getCharacteristic(C_SPEEDRANGE)).readValue();
+      this.speedRange = [r.getUint16(0, true) / 100, r.getUint16(2, true) / 100]; diag.push(`Snelheidsbereik: ${this.speedRange.join(' – ')} km/h`); } catch {}
+    try { const r = await (await svc.getCharacteristic(C_INCRANGE)).readValue();
+      this.incRange = [r.getInt16(0, true) / 10, r.getInt16(2, true) / 10]; diag.push(`Hellingsbereik: ${this.incRange.join(' – ')} %`); } catch {}
+    const data = await svc.getCharacteristic(C_TREADMILL);
+    data.addEventListener('characteristicvaluechanged', e => { const d = parseTreadmillData(e.target.value); if (d) this.onData(d); });
+    await data.startNotifications();
+    try {
+      this.cp = await svc.getCharacteristic(C_CONTROL);
+      this.cp.addEventListener('characteristicvaluechanged', e => {
+        const v = e.target.value; if (v.getUint8(0) !== 0x80) return;
+        const op = v.getUint8(1), code = v.getUint8(2);
+        cmdLog(`← antwoord op ${OPNAMES[op] || '0x' + op.toString(16)}: ${RESULTS[code] || 'code ' + code}`);
+        if (!this.pending || this.pending.op !== op) return;
+        const p = this.pending; this.pending = null; clearTimeout(p.timer);
+        if (code === 1) p.resolve(); else { const err = new Error(`Loopband weigerde ${OPNAMES[op] || op}: ${RESULTS[code] || code}`); err.code = code; p.reject(err); }
+      });
+      await this.cp.startNotifications();
+      diag.push('Control point: beschikbaar');
+    } catch (e) { diag.push('Control point NIET beschikbaar — alleen uitlezen mogelijk'); }
+    try { const st = await svc.getCharacteristic(C_STATUS); await st.startNotifications(); } catch {}
+    this.diag = diag.join('\n');
+    await this.cmd([0x00]).catch(e => log('Request control: ' + e.message));
+  }
+  cmd(bytes) {
+    if (!this.cp) return Promise.reject(new Error('Geen control point'));
+    const run = () => new Promise((resolve, reject) => {
+      const p = { op: bytes[0], resolve, reject };
+      p.timer = setTimeout(() => { if (this.pending === p) { this.pending = null; cmdLog(`   (geen antwoord op ${OPNAMES[bytes[0]]})`); resolve(); } }, 2000);
+      this.pending = p;
+      cmdLog(`→ ${OPNAMES[bytes[0]] || bytes[0]}${bytes[0] === 2 ? ' ' + ((bytes[1] | bytes[2] << 8) / 100).toFixed(2) + ' km/h' : bytes[0] === 3 ? ' ' + (((bytes[1] | bytes[2] << 8) << 16 >> 16) / 10) + '%' : ''}`);
+      this.cp.writeValue(new Uint8Array(bytes)).catch(e => { clearTimeout(p.timer); this.pending = null; cmdLog('   schrijffout: ' + e.message); reject(e); });
+    });
+    this.queue = this.queue.then(run, run);
+    return this.queue;
+  }
+  // Bij "geen controle" (code 5) eerst opnieuw controle vragen en dan nog eens proberen
+  async cmdRetry(bytes) {
+    try { return await this.cmd(bytes); }
+    catch (e) { if (e.code !== 5) throw e; await this.cmd([0x00]).catch(() => {}); return this.cmd(bytes); }
+  }
+  async start() { await this.cmd([0x00]).catch(() => {}); return this.cmd([0x07]); }
+  pause() { return this.cmd([0x08, 0x02]); }
+  stop() { return this.cmd([0x08, 0x01]); }
+  setSpeed(kmh) { const v = Math.round(kmh * 100); return this.cmdRetry([0x02, v & 255, v >> 8]); }
+  setIncline(pct) { const v = Math.round(pct * 10) & 0xffff; return this.cmdRetry([0x03, v & 255, v >> 8]); }
+  disconnect() { try { this.device?.gatt.disconnect(); } catch {} }
+}
+function parseTreadmillData(dv) {
+  try {
+    let o = 0; const f = dv.getUint16(o, true); o += 2; const d = {};
+    if (!(f & 0x0001)) { d.speed = dv.getUint16(o, true) / 100; o += 2; }
+    if (f & 0x0002) o += 2;
+    if (f & 0x0004) { d.distance = dv.getUint16(o, true) + (dv.getUint8(o + 2) << 16); o += 3; }
+    if (f & 0x0008) { d.incline = dv.getInt16(o, true) / 10; o += 4; }
+    if (f & 0x0010) o += 4;
+    if (f & 0x0020) o += 1;
+    if (f & 0x0040) o += 1;
+    if (f & 0x0080) { d.kcal = dv.getUint16(o, true); o += 5; }
+    if (f & 0x0100) { const hr = dv.getUint8(o); if (hr) d.hr = hr; o += 1; }
+    if (f & 0x0200) o += 1;
+    if (f & 0x0400) { d.elapsed = dv.getUint16(o, true); o += 2; }
+    return d;
+  } catch { return null; }
+}
+
+/* Simulator met dezelfde interface — om zonder loopband te testen */
+class SimTreadmill {
+  constructor() { this.onData = () => {}; this.onDisconnect = () => {}; this.name = 'Simulator'; this.canSpeed = this.canIncline = true;
+    this.speed = 0; this.target = 0; this.incline = 0; this.dist = 0; this.running = false; this.diag = 'Simulator — geen echte loopband.'; }
+  async connect() {
+    this.timer = setInterval(() => {
+      const tgt = this.running ? this.target : 0;
+      this.speed += clamp(tgt - this.speed, -0.6, 0.6);       // ~0.6 km/h per 0.5 s versnelling
+      this.dist += this.speed / 3.6 * 0.5 * (window.SIM_FAST || 1);
+      this.onData({ speed: round1(this.speed), incline: this.incline, distance: Math.round(this.dist), hr: Math.round(90 + this.speed * 6 + this.incline * 2) });
+    }, 500);
+  }
+  // Net als een echte band: na start ~3 s aftellen op minimumsnelheid, opdrachten in die periode worden genegeerd
+  async start() { if (!this.running) { this.running = true; this.bootUntil = performance.now() + 3000; this.target = 0.8; } }
+  async pause() { this.running = false; } async stop() { this.running = false; }
+  booting() { return performance.now() < (this.bootUntil || 0); }
+  async setSpeed(v) { cmdLog(`→ snelheid ${v.toFixed(2)} km/h (sim${this.booting() ? ', genegeerd: band start nog' : ''})`); if (!this.booting()) this.target = v; }
+  async setIncline(v) { if (!this.booting()) this.incline = v; }
+  disconnect() { clearInterval(this.timer); }
+}
+
+/* Optionele hartslagband (standaard BLE Heart Rate) */
+async function connectHr() {
+  try {
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
+    const ch = await (await (await dev.gatt.connect()).getPrimaryService('heart_rate')).getCharacteristic('heart_rate_measurement');
+    ch.addEventListener('characteristicvaluechanged', e => { const v = e.target.value; live.hrStrap = v.getUint8(0) & 1 ? v.getUint16(1, true) : v.getUint8(1); });
+    await ch.startNotifications();
+    $('dotHr').className = 'dot on'; $('txtHr').textContent = dev.name || 'HR';
+    dev.addEventListener('gattserverdisconnected', () => { $('dotHr').className = 'dot'; $('txtHr').textContent = 'Geen HR'; live.hrStrap = null; });
+  } catch (e) { if (e.name !== 'NotFoundError') alert(e.message); }
+}
+
+/* ====================== Runner ====================== */
+let tm = null;
+const live = { speed: 0, incline: 0, distance: null, hr: null, hrStrap: null };
+const run = { w: null, idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, state: 'idle', intensity: 1, spdOffset: 0, incOffset: 0, samples: [], startedAt: null, lastTick: 0, lastDist: null, announced: -1 };
+
+function log(m) { console.log('[loopband]', m); }
+function setTmStatus() {
+  const on = !!tm; $('dotTm').className = 'dot' + (on ? (tm instanceof SimTreadmill ? ' sim' : ' on') : '');
+  $('txtTm').textContent = on ? tm.name : 'Loopband niet verbonden';
+  $('diag').textContent = on ? tm.diag : 'Nog niet verbonden.';
+  $('tmInfo').textContent = on && tm.canSpeed === false ? '⚠ Deze loopband meldt dat snelheid niet op afstand instelbaar is.' : '';
+}
+async function useTreadmill(t, acceptAll) {
+  try {
+    tm?.disconnect();
+    await t.connect(acceptAll);
+    tm = t;
+    tm.onData = d => { Object.assign(live, d); };
+    tm.onDisconnect = () => { tm = null; setTmStatus(); if (run.state === 'running') { pauseRun(); speak('Verbinding met loopband verbroken'); } };
+    if (t.speedRange) settings.maxSpeed = Math.min(settings.maxSpeed, t.speedRange[1]);
+    setTmStatus();
+  } catch (e) { if (e.name !== 'NotFoundError') alert('Verbinden mislukt: ' + e.message); }
+}
+
+function targetSpeed() { const s = run.w.steps[run.idx]; return clamp(round1(s.speed * run.intensity + run.spdOffset), 0.5, settings.maxSpeed); }
+function targetIncline() { const s = run.w.steps[run.idx]; return clamp(round1(s.incline + run.incOffset), -5, settings.maxIncline); }
+async function applyTargets() {
+  if (!tm || !run.w || run.state !== 'running') return;
+  enf.lastSpeedSent = enf.lastIncSent = performance.now(); enf.prevSpeed = live.speed; enf.prevInc = live.incline;
+  try { await tm.setSpeed(targetSpeed()); } catch (e) { log(e.message); }
+  try { if (tm.canIncline !== false) await tm.setIncline(targetIncline()); } catch (e) { log(e.message); }
+}
+/* Bewaking: de loopband negeert soms opdrachten (bv. tijdens het opstarten/aftellen).
+   Als de band niet naar het doel beweegt, sturen we het doel opnieuw (max. elke 3 s). */
+const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0 };
+function enforceTargets(now) {
+  if (!tm || !run.w || run.state !== 'running') return;
+  if (now - enf.lastSpeedSent >= 2000) {
+    const tgt = targetSpeed(), diff = tgt - (live.speed || 0);
+    const progressing = Math.sign(diff) * ((live.speed || 0) - enf.prevSpeed) > 0.15;
+    if (Math.abs(diff) > 0.25 && !progressing) {
+      cmdLog(`   band staat op ${(live.speed || 0).toFixed(1)} i.p.v. ${tgt.toFixed(1)} km/h → opnieuw sturen`);
+      tm.setSpeed(tgt).catch(e => log(e.message));
+    }
+    enf.lastSpeedSent = now; enf.prevSpeed = live.speed || 0;
+  }
+  if (tm.canIncline !== false && live.incline != null && now - enf.lastIncSent >= 4000) {
+    const tgt = targetIncline(), diff = tgt - live.incline;
+    const progressing = Math.sign(diff) * (live.incline - enf.prevInc) > 0.05;
+    if (Math.abs(diff) > 0.25 && !progressing) {
+      cmdLog(`   helling staat op ${live.incline}% i.p.v. ${tgt}% → opnieuw sturen`);
+      tm.setIncline(tgt).catch(e => log(e.message));
+    }
+    enf.lastIncSent = now; enf.prevInc = live.incline;
+  }
+}
+
+function loadRun(w, libId) {
+  if (run.state === 'running' || run.state === 'paused') { if (!confirm('Lopende training stoppen?')) return false; stopRun(); }
+  Object.assign(run, { w, libId, idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, state: 'idle', intensity: 1, spdOffset: 0, incOffset: 0, samples: [], announced: -1 });
+  $('runName').textContent = w.name;
+  renderStepsTable(); renderRun(); switchTab('run');
+  $('runSelect').value = libId || '';
+  return true;
+}
+async function startRun() {
+  if (!run.w) return alert('Kies eerst een training in de lijst bovenaan.');
+  if (!tm) return alert('Verbind eerst de loopband (of gebruik de simulator).');
+  if (run.state === 'idle' || run.state === 'done') {
+    Object.assign(run, { idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, samples: [], startedAt: new Date(), announced: -1 });
+  }
+  run.state = 'running'; run.lastTick = performance.now(); run.lastDist = live.distance;
+  await requestWakeLock();
+  try { await tm.start(); } catch (e) { log(e.message); }
+  await applyTargets();
+  announceStep();
+}
+async function pauseRun() {
+  if (run.state !== 'running') return;
+  run.state = 'paused'; try { await tm?.pause(); } catch (e) { log(e.message); }
+}
+async function stopRun() {
+  if (run.state === 'idle') return;
+  run.state = 'done'; try { await tm?.stop(); } catch (e) { log(e.message); }
+  releaseWakeLock(); snapshotRun(); renderRun();
+}
+function gotoStep(i) {
+  if (!run.w) return;
+  if (i >= run.w.steps.length) { finishRun(); return; }
+  run.idx = clamp(i, 0, run.w.steps.length - 1); run.stepT = 0; run.stepD = 0; run.spdOffset = 0; run.incOffset = 0; run.announced = -1;
+  applyTargets(); announceStep(); renderStepsTable();
+}
+function finishRun() { speak('Training voltooid. Goed gedaan!'); beep(880, 600); stopRun(); }
+
+function tick() {
+  const now = performance.now();
+  if (run.state === 'running') {
+    const dt = (now - run.lastTick) / 1000 * (window.SIM_FAST || 1); run.lastTick = now;
+    let dd;
+    if (live.distance != null && run.lastDist != null && live.distance >= run.lastDist) dd = live.distance - run.lastDist;
+    else dd = live.speed / 3.6 * dt;
+    run.lastDist = live.distance;
+    run.stepT += dt; run.totT += dt; run.stepD += dd; run.totD += dd;
+    const s = run.w.steps[run.idx];
+    const remain = s.kind === 'time' ? s.value - run.stepT : (s.value - run.stepD) / Math.max(live.speed / 3.6, 0.5);
+    const r = Math.ceil(remain);
+    if (r <= 3 && r >= 1 && run.announced !== r) { run.announced = r; beep(r === 1 ? 990 : 660, 120); }
+    const done = s.kind === 'time' ? run.stepT >= s.value : run.stepD >= s.value;
+    if (done) gotoStep(run.idx + 1);
+    // 1 sample per seconde voor TCX
+    const last = run.samples[run.samples.length - 1];
+    if (!last || run.totT - last.t >= 1) run.samples.push({ t: run.totT, d: run.totD, speed: live.speed, incline: live.incline, hr: live.hrStrap || live.hr });
+    enforceTargets(now);
+  } else run.lastTick = now;
+  renderRun();
+}
+
+function stepRemainSec() {
+  const s = run.w.steps[run.idx];
+  return s.kind === 'time' ? s.value - run.stepT : (s.value - run.stepD) / Math.max((live.speed || s.speed) / 3.6, 0.5);
+}
+function plannedElapsed() {
+  let t = 0; for (let i = 0; i < run.idx; i++) t += stepSeconds(run.w.steps[i]);
+  const s = run.w.steps[run.idx];
+  return t + (s.kind === 'time' ? run.stepT : Math.min(run.stepD / s.value, 1) * stepSeconds(s));
+}
+function renderRun() {
+  const hr = live.hrStrap || live.hr;
+  $('mSpeed').textContent = (live.speed || 0).toFixed(1);
+  $('mPace').textContent = paceFromSpeed(live.speed);
+  $('mIncline').textContent = (live.incline || 0).toFixed(1);
+  $('mHr').textContent = hr || '--';
+  $('mTime').textContent = fmtTime(run.totT);
+  $('mDist').textContent = (run.totD / 1000).toFixed(2);
+  $('mIntensity').textContent = Math.round(run.intensity * 100) + '%';
+  $('btnStart').textContent = run.state === 'paused' ? '▶ Hervat' : '▶ Start';
+  if (!run.w) return;
+  const s = run.w.steps[run.idx], next = run.w.steps[run.idx + 1];
+  const total = workoutTotals(run.w).t, pe = plannedElapsed();
+  $('stepLabel').textContent = run.state === 'done' ? 'Klaar ✔' : `${run.idx + 1}/${run.w.steps.length} · ${s.label}`;
+  $('stepTarget').textContent = run.state === 'done' ? '' :
+    `${targetSpeed().toFixed(1)} km/h (${paceFromSpeed(targetSpeed())}/km) · ${targetIncline()}%` + (s.kind === 'distance' ? ` · ${Math.max(0, Math.round(s.value - run.stepD))} m te gaan` : '');
+  $('stepRemain').textContent = run.state === 'done' ? '00:00' : fmtTime(stepRemainSec());
+  $('nextStep').textContent = next ? `Daarna: ${next.label} · ${next.speed} km/h` : 'Laatste stap';
+  $('mRemain').textContent = fmtTime(total - pe);
+  $('totalProgress').style.width = (pe / total * 100) + '%';
+  drawChart($('runChart'), run.w, pe);
+}
+function renderStepsTable() {
+  const t = $('stepsTable'); if (!run.w) { t.innerHTML = ''; return; }
+  t.innerHTML = '<tr><th>#</th><th>Stap</th><th>Duur</th><th>Snelheid</th><th>Tempo</th><th>Helling</th></tr>';
+  run.w.steps.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    tr.className = i === run.idx ? 'cur' : i < run.idx ? 'done' : '';
+    const cells = [i + 1, s.label, s.kind === 'time' ? fmtTime(s.value) : s.value + ' m', s.speed.toFixed(1) + ' km/h', paceFromSpeed(s.speed), s.incline + '%'];
+    cells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+    tr.onclick = () => { if (run.state !== 'idle' && confirm(`Naar stap ${i + 1} springen?`)) gotoStep(i); };
+    t.appendChild(tr);
+  });
+}
+
+/* ====================== Feedback: beep, spraak, wake lock ====================== */
+let actx;
+function beep(freq, ms) {
+  if (!settings.beep) return;
+  try { actx = actx || new AudioContext(); const o = actx.createOscillator(), g = actx.createGain();
+    o.frequency.value = freq; g.gain.value = .15; o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + ms / 1000); } catch {}
+}
+function speak(text) {
+  if (!settings.voice || !window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'nl-NL'; speechSynthesis.cancel(); speechSynthesis.speak(u);
+}
+function announceStep() {
+  const s = run.w.steps[run.idx];
+  const dur = s.kind === 'time' ? (s.value >= 60 ? `${Math.round(s.value / 60 * 10) / 10} minuten` : `${Math.round(s.value)} seconden`) : `${s.value} meter`;
+  speak(`${s.label.replace(/(\d+)\/(\d+)/, '$1 van $2')}. ${dur} aan ${String(targetSpeed()).replace('.', ',')} kilometer per uur`);
+}
+let wakeLock = null;
+async function requestWakeLock() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {} }
+function releaseWakeLock() { try { wakeLock?.release(); } catch {} wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && run.state === 'running') requestWakeLock(); });
+
+/* ====================== TCX export ====================== */
+/* De laatst afgeronde training wordt bewaard, zodat exporteren ook na herladen
+   (bv. na het koppelen met Strava) nog kan. */
+let lastRun = store.get('lastRun', null);
+function snapshotRun() {
+  if (!run.samples.length) return;
+  lastRun = { name: run.w?.name || 'Loopbandtraining', startedAt: (run.startedAt || new Date()).toISOString(),
+    totT: run.totT, totD: run.totD, samples: run.samples.map(s => ({ t: +s.t.toFixed(1), d: +s.d.toFixed(1), speed: s.speed, hr: s.hr || 0 })),
+    summary: run.w ? run.w.steps.map(s => `${s.label}: ${s.kind === 'time' ? fmtTime(s.value) : s.value + ' m'} @ ${s.speed} km/h ${s.incline}%`).join('\n') : '',
+    uploaded: {} };
+  store.set('lastRun', lastRun);
+  renderExport();
+}
+function renderExport() {
+  const ok = !!lastRun && lastRun.samples.length >= 5;
+  $('btnTcx').disabled = !ok;
+  $('lastRunInfo').textContent = ok
+    ? `Laatste training: ${lastRun.name} · ${new Date(lastRun.startedAt).toLocaleString('nl-BE', { dateStyle: 'short', timeStyle: 'short' })} · ${fmtTime(lastRun.totT)} · ${(lastRun.totD / 1000).toFixed(2)} km`
+    : 'Nog geen afgeronde training om te exporteren.';
+  const box = $('stravaButtons'); box.innerHTML = '';
+  for (const [key, p] of Object.entries(strava)) {
+    const b = document.createElement('button'); b.className = 'btn'; b.style.borderColor = '#fc4c02';
+    const done = lastRun?.uploaded?.[key];
+    b.textContent = done ? `✔ Op Strava van ${p.name}` : `Naar Strava van ${p.name}`;
+    b.disabled = !ok || !!done || !p.refresh_token;
+    b.title = !p.refresh_token ? `Koppel eerst ${p.name} met Strava (Instellingen)` : '';
+    b.onclick = () => uploadToStrava(key);
+    box.appendChild(b);
+    if (done) { const a = document.createElement('a'); a.href = `https://www.strava.com/activities/${done}`; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'bekijk'; a.className = 'small'; a.style.color = '#fc4c02'; box.appendChild(a); }
+  }
+}
+function buildTcx(r) {
+  const start = new Date(r.startedAt), iso = t => new Date(start.getTime() + t * 1000).toISOString();
+  const maxHr = Math.max(0, ...r.samples.map(s => s.hr || 0));
+  const pts = r.samples.map(s => `<Trackpoint><Time>${iso(s.t)}</Time><DistanceMeters>${s.d.toFixed(1)}</DistanceMeters>` +
+    (s.hr ? `<HeartRateBpm><Value>${s.hr}</Value></HeartRateBpm>` : '') +
+    `<Extensions><TPX xmlns="http://www.garmin.com/xmlschemas/ActivityExtension/v2"><Speed>${(s.speed / 3.6).toFixed(3)}</Speed></TPX></Extensions></Trackpoint>`).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<TrainingCenterDatabase xmlns="http://www.garmin.com/xmlschemas/TrainingCenterDatabase/v2">
+<Activities><Activity Sport="Running"><Id>${start.toISOString()}</Id>
+<Lap StartTime="${start.toISOString()}"><TotalTimeSeconds>${r.totT.toFixed(0)}</TotalTimeSeconds><DistanceMeters>${r.totD.toFixed(1)}</DistanceMeters>
+${maxHr ? `<MaximumHeartRateBpm><Value>${maxHr}</Value></MaximumHeartRateBpm>` : ''}<Intensity>Active</Intensity><TriggerMethod>Manual</TriggerMethod>
+<Track>
+${pts}
+</Track></Lap><Notes>${(r.name || '').replace(/[<&>]/g, '')} — Loopband Coach</Notes></Activity></Activities></TrainingCenterDatabase>`;
+  return xml;
+}
+function exportTcx() {
+  if (!lastRun) return;
+  download(`loopband-${lastRun.startedAt.slice(0, 16).replace(/[:T]/g, '-')}.tcx`, buildTcx(lastRun), 'application/vnd.garmin.tcx+xml');
+}
+
+/* ====================== Strava ====================== */
+// Elk profiel heeft een eigen Strava API-app (Client ID/Secret) — nieuwe Strava-apps mogen maar 1 atleet koppelen.
+// Alles wordt enkel lokaal in deze browser bewaard.
+let strava = Object.assign({ jonas: { name: 'Jonas' }, laura: { name: 'Laura' } }, store.get('strava', {}));
+const saveStrava = () => store.set('strava', strava);
+const redirectUri = () => location.origin + location.pathname;
+function renderStravaSettings() {
+  const box = $('stravaProfiles'); box.innerHTML = '';
+  for (const [key, p] of Object.entries(strava)) {
+    const card = document.createElement('div'); card.className = 'item'; card.style.cssText = 'flex-direction:column;align-items:stretch;cursor:default';
+    card.innerHTML = `
+      <div class="row"><input data-f="name" style="width:140px;font-weight:600"> <span class="small" data-f="status"></span></div>
+      <div class="row">
+        <div class="field"><label>Client ID</label><input data-f="clientId" inputmode="numeric" style="width:120px"></div>
+        <div class="field" style="flex:1"><label>Client Secret</label><input data-f="clientSecret" type="password" style="width:100%;min-width:180px"></div>
+      </div>
+      <div class="row"><button class="btn" data-a="connect" style="border-color:#fc4c02">Koppel met Strava</button><button class="btn" data-a="disconnect">Ontkoppel</button></div>`;
+    for (const f of ['name', 'clientId', 'clientSecret']) {
+      const el = card.querySelector(`[data-f=${f}]`); el.value = p[f] || '';
+      el.onchange = () => { p[f] = el.value.trim(); saveStrava(); renderExport(); };
+    }
+    card.querySelector('[data-f=status]').innerHTML = p.refresh_token
+      ? `<span style="color:var(--ok)">✔ gekoppeld${p.athlete ? ' als ' + p.athlete.replace(/[<>&]/g, '') : ''}</span>` : '<span class="muted">niet gekoppeld</span>';
+    card.querySelector('[data-a=connect]').onclick = () => stravaConnect(key);
+    card.querySelector('[data-a=disconnect]').onclick = () => {
+      if (!confirm(`${p.name} ontkoppelen van Strava?`)) return;
+      delete p.access_token; delete p.refresh_token; delete p.expires_at; delete p.athlete; saveStrava(); renderStravaSettings(); renderExport();
+    };
+    box.appendChild(card);
+  }
+  $('stravaCallback').textContent = location.hostname || 'localhost';
+}
+function stravaConnect(key) {
+  const p = strava[key];
+  if (!p.clientId || !p.clientSecret) return alert(`Vul eerst Client ID en Client Secret in voor ${p.name}.`);
+  if (run.state === 'running' && !confirm('Er loopt een training. De pagina gaat even naar Strava. Doorgaan?')) return;
+  const u = new URL('https://www.strava.com/oauth/authorize');
+  u.search = new URLSearchParams({ client_id: p.clientId, response_type: 'code', redirect_uri: redirectUri(),
+    approval_prompt: 'auto', scope: 'activity:write', state: 'strava-' + key });
+  location.href = u.toString();
+}
+async function stravaToken(p, params) {
+  const r = await fetch('https://www.strava.com/oauth/token', { method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: p.clientId, client_secret: p.clientSecret, ...params }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.message || `Strava fout ${r.status}`);
+  p.access_token = j.access_token; p.refresh_token = j.refresh_token; p.expires_at = j.expires_at;
+  if (j.athlete) p.athlete = [j.athlete.firstname, j.athlete.lastname].filter(Boolean).join(' ');
+  saveStrava();
+}
+async function handleStravaCallback() {
+  const q = new URLSearchParams(location.search), state = q.get('state') || '';
+  if (!state.startsWith('strava-')) return;
+  history.replaceState(null, '', redirectUri());
+  const key = state.slice(7), p = strava[key];
+  if (!p) return;
+  if (q.get('error')) { alert(`Koppelen met Strava geannuleerd (${q.get('error')}).`); return; }
+  if (!(q.get('scope') || '').includes('activity:write')) { alert('Je moet in Strava toestemming geven om activiteiten te uploaden. Probeer opnieuw en laat dat vakje aangevinkt.'); return; }
+  try {
+    await stravaToken(p, { code: q.get('code'), grant_type: 'authorization_code' });
+    switchTab('set'); alert(`✔ ${p.name} is gekoppeld met Strava${p.athlete ? ' (' + p.athlete + ')' : ''}.`);
+  } catch (e) { alert('Koppelen met Strava mislukt: ' + e.message); }
+  renderStravaSettings(); renderExport();
+}
+async function uploadToStrava(key) {
+  const p = strava[key], st = $('stravaStatus');
+  if (!lastRun) return;
+  if (!confirm(`"${lastRun.name}" (${(lastRun.totD / 1000).toFixed(2)} km) uploaden naar Strava van ${p.name}?`)) return;
+  const say = (m, c = '') => { st.textContent = m; st.style.color = c; };
+  try {
+    if (!p.access_token || (p.expires_at || 0) < Date.now() / 1000 + 120) { say('Strava-sessie vernieuwen…'); await stravaToken(p, { refresh_token: p.refresh_token, grant_type: 'refresh_token' }); }
+    say(`Uploaden naar ${p.name}…`);
+    const fd = new FormData();
+    fd.append('file', new Blob([buildTcx(lastRun)], { type: 'application/xml' }), 'loopband.tcx');
+    fd.append('data_type', 'tcx');
+    fd.append('name', lastRun.name);
+    fd.append('description', (lastRun.summary ? lastRun.summary + '\n\n' : '') + 'Loopband Coach · VirtuFit Elite Comfort');
+    fd.append('trainer', '1');
+    fd.append('external_id', `loopband-${lastRun.startedAt}-${key}`);
+    let r = await fetch('https://www.strava.com/api/v3/uploads', { method: 'POST', headers: { Authorization: 'Bearer ' + p.access_token }, body: fd });
+    let j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((j.message || `fout ${r.status}`) + (j.errors ? ': ' + JSON.stringify(j.errors) : ''));
+    // Strava verwerkt de upload asynchroon → status opvragen tot er een activiteit is
+    for (let i = 0; i < 20 && !j.activity_id && !j.error; i++) {
+      say(`Strava verwerkt de training… (${j.status || 'bezig'})`);
+      await new Promise(res => setTimeout(res, 2000));
+      r = await fetch(`https://www.strava.com/api/v3/uploads/${j.id_str || j.id}`, { headers: { Authorization: 'Bearer ' + p.access_token } });
+      j = await r.json().catch(() => ({}));
+    }
+    if (j.error) throw new Error(j.error);
+    if (!j.activity_id) throw new Error('Strava is nog bezig met verwerken — kijk binnen een minuut in Strava.');
+    lastRun.uploaded = lastRun.uploaded || {}; lastRun.uploaded[key] = j.activity_id; store.set('lastRun', lastRun);
+    say(`✔ Geüpload naar Strava van ${p.name}.`, 'var(--ok)');
+    renderExport();
+  } catch (e) { say('Strava-upload mislukt: ' + e.message, 'var(--danger)'); }
+}
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+/* ====================== UI wiring ====================== */
+function switchTab(name) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
+  if (name === 'run') renderRun(); if (name === 'lib') updatePreview();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+$('editor').addEventListener('input', () => { updatePreview(); updateDirty(); });
+$('btnNew').onclick = () => { if (confirmDiscard()) { addToLibrary(null, 'Titel: Nieuwe training\nOpwarmen: 10:00 @ 9 km/h 1%\nKern: 20:00 @ 11 km/h 1%\nUitlopen: 5:00 @ 8 km/h 0%'); editItem(selectedId); } };
+async function saveEditor() {
+  if (!updatePreview()) return null;
+  const src = await ensureIncline($('editor').value);
+  if (src == null) return null;
+  $('editor').value = src;
+  const w = updatePreview(); if (!w) return null;
+  const item = library.find(i => i.id === selectedId);
+  if (item) { item.source = src; saveLib(); renderLib(); } else addToLibrary(null, src);
+  updateDirty();
+  return w;
+}
+$('btnSave').onclick = saveEditor;
+$('btnLoad').onclick = async () => { const w = await saveEditor(); if (w) loadRun(w, selectedId); };
+$('runSelect').onchange = e => {
+  const item = library.find(i => i.id === e.target.value);
+  if (!item) return;
+  if (!loadRun(parseText(item.source), item.id)) e.target.value = run.libId || '';
+};
+$('btnDelete').onclick = () => {
+  if (!confirm('Training verwijderen?')) return;
+  library = library.filter(i => i.id !== selectedId); saveLib();
+  selectedId = library[0]?.id; $('editor').value = library[0]?.source || ''; renderLib(); updatePreview();
+};
+$('btnExportJson').onclick = () => { const w = updatePreview(); if (w) download(w.name.replace(/[^\w-]+/g, '_') + '.json', JSON.stringify(w, null, 2), 'application/json'); };
+$('fileImport').onchange = async e => {
+  for (const f of e.target.files) {
+    try {
+      const txt = await f.text(), ext = f.name.split('.').pop().toLowerCase();
+      let src;
+      if (ext === 'zwo' || ext === 'xml') src = toText(parseZwo(txt));
+      else if (ext === 'json') src = toText(parseJson(txt));
+      else { parseText(txt); src = txt; }
+      src = await ensureIncline(src, f.name);
+      if (src != null) addToLibrary(null, src);
+    } catch (err) { alert(`${f.name}: ${err.message}`); }
+  }
+  e.target.value = '';
+};
+$('btnNl').onclick = async () => {
+  const msg = $('nlMsg'); msg.textContent = ''; msg.className = 'small';
+  try {
+    const conv = instructionsToText($('nlInput').value, $('nlTitle').value.trim());
+    const source = await ensureIncline(conv.source), warnings = conv.warnings;
+    if (source == null) { msg.textContent = 'Geannuleerd.'; msg.style.color = ''; return; }
+    if (!confirmDiscard()) return;
+    addToLibrary(null, source);
+    msg.textContent = warnings.length ? '⚠ ' + warnings.join('\n⚠ ') + '\nControleer en pas aan in de editor.' : '✔ Training aangemaakt — controleer ze in de editor.';
+    msg.style.whiteSpace = 'pre-wrap'; msg.style.color = warnings.length ? 'var(--warn)' : 'var(--ok)';
+  } catch (e) { msg.className = 'err'; msg.style.color = ''; msg.textContent = e.message; }
+};
+/* Inspreken via de microfoon (Web Speech API) */
+(() => {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, btn = $('btnMic'), state = $('micState');
+  if (!SR) { btn.disabled = true; btn.title = 'Spraakherkenning niet beschikbaar in deze browser (gebruik Chrome, Edge of Safari)'; return; }
+  let rec = null, base = '', finalTxt = '';
+  btn.onclick = () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR(); rec.lang = 'nl-BE'; rec.continuous = true; rec.interimResults = true;
+    base = $('nlInput').value.trim(); finalTxt = ''; state.textContent = '';
+    rec.onresult = e => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i]; if (r.isFinal) finalTxt += r[0].transcript.trim() + '. '; else interim += r[0].transcript;
+      }
+      $('nlInput').value = (base ? base + '. ' : '') + (finalTxt + interim).trim();
+    };
+    rec.onerror = e => { state.textContent = e.error === 'not-allowed' ? 'Microfoon geweigerd — geef toestemming in de browser.' : 'Spraakfout: ' + e.error; };
+    rec.onend = () => {
+      rec = null; btn.textContent = '🎤 Inspreken'; btn.classList.remove('danger');
+      if (state.textContent.startsWith('Luistert')) state.textContent = '';
+      if (finalTxt.trim()) $('btnNl').click();   // meteen omzetten na het inspreken
+    };
+    rec.start(); btn.textContent = '⏹ Stop'; btn.classList.add('danger');
+    state.textContent = 'Luistert… spreek de training in en druk op Stop.';
+  };
+})();
+$('btnConnect').onclick = () => useTreadmill(new FtmsTreadmill(), settings.allDevices);
+$('btnSim').onclick = () => useTreadmill(new SimTreadmill());
+$('btnConnectHr').onclick = connectHr;
+$('btnStart').onclick = startRun;
+$('btnPause').onclick = pauseRun;
+$('btnStop').onclick = () => { if (confirm('Training stoppen?')) stopRun(); };
+$('btnNext').onclick = () => run.state !== 'idle' && gotoStep(run.idx + 1);
+$('btnPrev').onclick = () => run.state !== 'idle' && gotoStep(run.idx - 1);
+$('spdUp').onclick = () => { run.spdOffset += 0.5; applyTargets(); renderRun(); };
+$('spdDown').onclick = () => { run.spdOffset -= 0.5; applyTargets(); renderRun(); };
+$('incUp').onclick = () => { run.incOffset += 0.5; applyTargets(); renderRun(); };
+$('incDown').onclick = () => { run.incOffset -= 0.5; applyTargets(); renderRun(); };
+$('intUp').onclick = () => { run.intensity = round1((run.intensity + 0.02) * 50) / 50; applyTargets(); renderRun(); };
+$('intDown').onclick = () => { run.intensity = Math.max(0.5, Math.round((run.intensity - 0.02) * 50) / 50); applyTargets(); renderRun(); };
+$('btnTcx').onclick = exportTcx;
+window.addEventListener('resize', () => { updatePreview(); renderRun(); });
+window.addEventListener('beforeunload', e => { if (run.state === 'running') { e.preventDefault(); e.returnValue = ''; } });
+
+bindSettings();
+renderStravaSettings();
+renderExport();
+handleStravaCallback();
+renderLib();
+$('editor').value = library.find(i => i.id === selectedId)?.source || '';
+updatePreview();
+setTmStatus();
+setInterval(tick, 250);
+if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
