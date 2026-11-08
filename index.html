@@ -81,7 +81,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.8</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.9</span></h1>
   <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
   <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -832,16 +832,52 @@ function targetSpeed() { const s = run.w.steps[run.idx]; return clamp(round1(s.s
 function targetIncline() { const s = run.w.steps[run.idx]; return clamp(round1(s.incline + run.incOffset), -5, settings.maxIncline); }
 async function applyTargets() {
   if (!tm || !run.w || run.state !== 'running') return;
-  enf.lastSpeedSent = enf.lastIncSent = performance.now(); enf.prevSpeed = live.speed; enf.prevInc = live.incline;
+  const now = performance.now();
+  Object.assign(enf, { lastSpeedSent: now, lastIncSent: now, prevSpeed: live.speed || 0, prevInc: live.incline,
+    reached: false, reachedInc: false, stableSince: now, stableIncSince: now, lastObs: live.speed || 0, lastObsInc: live.incline });
   try { await tm.setSpeed(targetSpeed()); } catch (e) { log(e.message); }
   try { if (tm.canIncline !== false) await tm.setIncline(targetIncline()); } catch (e) { log(e.message); }
 }
-/* Bewaking: de loopband negeert soms opdrachten (bv. tijdens het opstarten/aftellen).
-   Als de band niet naar het doel beweegt, sturen we het doel opnieuw (max. elke 3 s). */
-const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0 };
+/* Bewaking:
+   1) De loopband negeert soms opdrachten (bv. tijdens het opstarten) → als de band het doel nog niet bereikte
+      en er niet naartoe beweegt, sturen we het doel opnieuw.
+   2) Had de band het doel wél bereikt en wijkt de snelheid daarna af en blijft ze stabiel, dan heeft de loper
+      op de loopband zelf bijgestuurd → die snelheid overnemen en de rest van de training mee schalen. */
+const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
+function detectConsoleChanges(now) {
+  const s = run.w.steps[run.idx], sp = live.speed || 0;
+  // --- snelheid ---
+  if (Math.abs(sp - enf.lastObs) > 0.05) enf.stableSince = now;
+  enf.lastObs = sp;
+  if (Math.abs(sp - targetSpeed()) <= 0.25) enf.reached = true;
+  else if (enf.reached && now - enf.stableSince >= 1500) {
+    if (sp < 0.5) {                           // band stilgezet op de loopband zelf → training pauzeren
+      cmdLog('   band staat stil (gestopt op de loopband) → training gepauzeerd');
+      pauseRun(); return true;
+    }
+    const before = run.intensity;
+    run.intensity = clamp(sp / s.speed, 0.5, 1.5); run.spdOffset = 0;
+    cmdLog(`   snelheid aangepast op de loopband: ${sp.toFixed(1)} km/h → intensiteit ${Math.round(before * 100)}% → ${Math.round(run.intensity * 100)}% voor de rest van de training`);
+    beep(520, 150);
+    enf.lastSpeedSent = now; enf.prevSpeed = sp;
+  }
+  // --- helling (geldt enkel voor de huidige stap) ---
+  if (live.incline != null) {
+    if (Math.abs(live.incline - enf.lastObsInc) > 0.05) enf.stableIncSince = now;
+    enf.lastObsInc = live.incline;
+    if (Math.abs(live.incline - targetIncline()) <= 0.25) enf.reachedInc = true;
+    else if (enf.reachedInc && now - enf.stableIncSince >= 2000) {
+      run.incOffset = round1(live.incline - s.incline);
+      cmdLog(`   helling aangepast op de loopband: ${live.incline}% (geldt voor deze stap)`);
+      enf.lastIncSent = now; enf.prevInc = live.incline;
+    }
+  }
+  return false;
+}
 function enforceTargets(now) {
   if (!tm || !run.w || run.state !== 'running') return;
-  if (now - enf.lastSpeedSent >= 2000) {
+  if (detectConsoleChanges(now)) return;
+  if (!enf.reached && now - enf.lastSpeedSent >= 2000) {
     const tgt = targetSpeed(), diff = tgt - (live.speed || 0);
     const progressing = Math.sign(diff) * ((live.speed || 0) - enf.prevSpeed) > 0.15;
     if (Math.abs(diff) > 0.25 && !progressing) {
@@ -850,7 +886,7 @@ function enforceTargets(now) {
     }
     enf.lastSpeedSent = now; enf.prevSpeed = live.speed || 0;
   }
-  if (tm.canIncline !== false && live.incline != null && now - enf.lastIncSent >= 4000) {
+  if (tm.canIncline !== false && live.incline != null && !enf.reachedInc && now - enf.lastIncSent >= 4000) {
     const tgt = targetIncline(), diff = tgt - live.incline;
     const progressing = Math.sign(diff) * (live.incline - enf.prevInc) > 0.05;
     if (Math.abs(diff) > 0.25 && !progressing) {
@@ -1233,8 +1269,15 @@ $('btnPause').onclick = pauseRun;
 $('btnStop').onclick = () => { if (confirm('Training stoppen?')) stopRun(); };
 $('btnNext').onclick = () => run.state !== 'idle' && gotoStep(run.idx + 1);
 $('btnPrev').onclick = () => run.state !== 'idle' && gotoStep(run.idx - 1);
-$('spdUp').onclick = () => { run.spdOffset += 0.5; applyTargets(); renderRun(); };
-$('spdDown').onclick = () => { run.spdOffset -= 0.5; applyTargets(); renderRun(); };
+// Snelheid ±0,5 in de app werkt zoals bijsturen op de loopband: de rest van de training schaalt mee
+function nudgeSpeed(d) {
+  if (!run.w) return;
+  const s = run.w.steps[run.idx];
+  run.intensity = clamp((targetSpeed() + d) / s.speed, 0.5, 1.5); run.spdOffset = 0;
+  applyTargets(); renderRun();
+}
+$('spdUp').onclick = () => nudgeSpeed(0.5);
+$('spdDown').onclick = () => nudgeSpeed(-0.5);
 $('incUp').onclick = () => { run.incOffset += 0.5; applyTargets(); renderRun(); };
 $('incDown').onclick = () => { run.incOffset -= 0.5; applyTargets(); renderRun(); };
 $('intUp').onclick = () => { run.intensity = round1((run.intensity + 0.02) * 50) / 50; applyTargets(); renderRun(); };
