@@ -81,7 +81,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.11</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.12</span></h1>
   <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
   <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -841,7 +841,9 @@ async function applyTargets() {
       en er niet naartoe beweegt, sturen we het doel opnieuw.
    2) Had de band het doel wél bereikt en wijkt de snelheid daarna af en blijft ze stabiel, dan heeft de loper
       op de loopband zelf bijgestuurd → die snelheid overnemen en de rest van de training mee schalen. */
-const enf = { lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, reachedSince: 0, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
+// Eerste 15 s na (her)start: app is leidend (doelsnelheid blijven sturen, bandsnelheid nooit overnemen).
+const START_GRACE_MS = 15000;
+const enf = { startedAt: 0, lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, reachedSince: 0, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
 function detectConsoleChanges(now) {
   const s = run.w.steps[run.idx], sp = live.speed || 0;
   // --- snelheid ---
@@ -850,7 +852,9 @@ function detectConsoleChanges(now) {
   // "doel bereikt" pas als de band minstens 1 s binnen 0,25 km/h van het doel loopt
   if (Math.abs(sp - targetSpeed()) <= 0.25) {
     if (!enf.reachedSince) enf.reachedSince = now;
-    if (now - enf.reachedSince >= 1000 && sp >= 1.5) enf.reached = true;
+    // Pas na de opstartperiode vertrouwen: sommige banden melden tijdens het aftellen al de gevraagde
+    // snelheid terwijl de band nog stilstaat, en starten daarna toch op hun startsnelheid (bv. 0,8 km/h).
+    if (now - enf.reachedSince >= 1000 && sp >= 1.5 && now - enf.startedAt >= START_GRACE_MS) enf.reached = true;
   } else {
     enf.reachedSince = 0;
     if (enf.reached && now - enf.stableSince >= 1500) {
@@ -858,7 +862,11 @@ function detectConsoleChanges(now) {
         cmdLog('   band staat stil (gestopt op de loopband) → training gepauzeerd');
         pauseRun(); return true;
       }
-      if (sp < 1.5) return false;             // opstart- of uitloopsnelheid: nooit als bijsturing zien
+      if (sp < 1.5) {                         // band (her)startte op startsnelheid → doel opnieuw sturen
+        cmdLog(`   band staat op startsnelheid ${sp.toFixed(1)} km/h → doel opnieuw sturen`);
+        enf.reached = false; enf.lastSpeedSent = 0; enf.prevSpeed = sp;
+        return false;
+      }
       adoptConsoleSpeed(now, s, sp);
     }
   }
@@ -871,8 +879,9 @@ function adoptConsoleSpeed(now, s, sp) {
   beep(520, 150);
   enf.lastSpeedSent = now; enf.prevSpeed = sp;
 }
-function resetEnf() {
+function resetEnf(isStart) {
   const now = performance.now();
+  if (isStart) enf.startedAt = now;
   Object.assign(enf, { lastSpeedSent: now, lastIncSent: now, prevSpeed: live.speed || 0, prevInc: live.incline,
     reached: false, reachedInc: false, reachedSince: 0, stableSince: now, stableIncSince: now, lastObs: live.speed || 0, lastObsInc: live.incline });
 }
@@ -927,7 +936,7 @@ async function startRun() {
   if (run.state === 'idle' || run.state === 'done') {
     Object.assign(run, { idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, samples: [], startedAt: new Date(), announced: -1 });
   }
-  resetEnf();   // vóór de eerste tick: oude "doel bereikt"-status van een vorige training mag niet blijven hangen
+  resetEnf(true);   // vóór de eerste tick: oude "doel bereikt"-status van een vorige training mag niet blijven hangen
   run.state = 'running'; run.lastTick = performance.now(); run.lastDist = live.distance;
   await requestWakeLock();
   try { await tm.start(); } catch (e) { log(e.message); }
@@ -955,10 +964,8 @@ function tick() {
   const now = performance.now();
   if (run.state === 'running') {
     const dt = (now - run.lastTick) / 1000 * (window.SIM_FAST || 1); run.lastTick = now;
-    let dd;
-    if (live.distance != null && run.lastDist != null && live.distance >= run.lastDist) dd = live.distance - run.lastDist;
-    else dd = live.speed / 3.6 * dt;
-    run.lastDist = live.distance;
+    // Afstand zelf berekenen uit de gemeten bandsnelheid (niet elke loopband meldt een bruikbare afstand)
+    const dd = (live.speed || 0) / 3.6 * dt;
     run.stepT += dt; run.totT += dt; run.stepD += dd; run.totD += dd;
     const s = run.w.steps[run.idx];
     const remain = s.kind === 'time' ? s.value - run.stepT : (s.value - run.stepD) / Math.max(live.speed / 3.6, 0.5);
