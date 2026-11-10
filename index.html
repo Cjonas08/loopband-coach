@@ -81,7 +81,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.13</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.14</span></h1>
   <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
   <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -228,7 +228,15 @@ Uitlopen: 8min @ 8.5 km/h</pre>
       <span id="stravaButtons" class="row"></span>
       <button class="btn" id="btnTcx" disabled>Download TCX (TrainingPeaks)</button>
     </div>
-    <p id="stravaStatus" class="small" style="margin-bottom:0"></p>
+    <p id="stravaStatus" class="small"></p>
+    <div class="row" style="align-items:flex-start;margin-top:8px">
+      <img id="imgPreview" alt="Samenvatting van de training" hidden style="width:220px;max-width:100%;border-radius:10px;border:1px solid var(--line)">
+      <div class="list" style="flex:1;min-width:200px">
+        <button class="btn" id="btnImg" disabled>🖼️ Download afbeelding</button>
+        <button class="btn" id="btnShare" disabled hidden>📤 Delen (bv. naar Strava of galerij)</button>
+        <p class="small muted" style="margin:0">Voeg de afbeelding in Strava toe als foto bij de activiteit (een foto kan niet in een TCX- of FIT-bestand).</p>
+      </div>
+    </div>
   </div>
 
   <div class="card">
@@ -1053,15 +1061,107 @@ let lastRun = store.get('lastRun', null);
 function snapshotRun() {
   if (!run.samples.length) return;
   lastRun = { name: run.w?.name || 'Loopbandtraining', startedAt: (run.startedAt || new Date()).toISOString(),
-    totT: run.totT, totD: run.totD, samples: run.samples.map(s => ({ t: +s.t.toFixed(1), d: +s.d.toFixed(1), speed: s.speed, hr: s.hr || 0 })),
+    totT: run.totT, totD: run.totD, samples: run.samples.map(s => ({ t: +s.t.toFixed(1), d: +s.d.toFixed(1), speed: s.speed, hr: s.hr || 0, inc: s.incline || 0 })),
+    steps: run.w ? run.w.steps.map(s => ({ kind: s.kind, value: s.value, speed: s.speed, incline: s.incline })) : null,
     summary: run.w ? run.w.steps.map(s => `${s.label}: ${s.kind === 'time' ? fmtTime(s.value) : s.value + ' m'} @ ${s.speed} km/h ${s.incline}%`).join('\n') : '',
     uploaded: {} };
   store.set('lastRun', lastRun);
   renderExport();
 }
+/* ---------- Samenvattingsafbeelding (voor Strava/Instagram) ---------- */
+function runStats(r) {
+  const km = r.totD / 1000, s = r.samples;
+  const moving = s.filter(x => x.speed > 1);
+  const hrs = s.map(x => x.hr).filter(Boolean);
+  let climb = 0;
+  for (let i = 1; i < s.length; i++) climb += Math.max(0, s[i].d - s[i - 1].d) * Math.max(0, s[i].inc || 0) / 100;
+  return {
+    km, dur: r.totT,
+    pace: km > 0.01 ? r.totT / km : 0,
+    avgSpeed: r.totT > 0 ? km / (r.totT / 3600) : 0,
+    maxSpeed: moving.length ? Math.max(...moving.map(x => x.speed)) : 0,
+    avgHr: hrs.length ? Math.round(hrs.reduce((a, b) => a + b, 0) / hrs.length) : 0,
+    climb: Math.round(climb)
+  };
+}
+const paceStr = sec => sec > 0 ? `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}` : '--:--';
+function drawRunImage(r) {
+  const W = 1080, H = 1080, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), st = runStats(r), F = 'system-ui, "Segoe UI", Roboto, sans-serif';
+  const COL = { bg: '#0f1216', panel: '#181d23', text: '#e8edf2', muted: '#93a1b0', accent: '#2dd4bf', line: '#2c343e',
+    z: ['#60a5fa', '#2dd4bf', '#eab308', '#f97316', '#ef4444'] };
+  const rr = (x, y, w, h, rad) => { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, rad) : g.rect(x, y, w, h); g.fill(); };
+  g.fillStyle = COL.bg; g.fillRect(0, 0, W, H);
+  // kop
+  const date = new Date(r.startedAt).toLocaleString('nl-BE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  g.fillStyle = COL.muted; g.font = `500 32px ${F}`; g.fillText(date.charAt(0).toUpperCase() + date.slice(1), 64, 96);
+  g.fillStyle = COL.text; let size = 68; g.font = `800 ${size}px ${F}`;
+  while (g.measureText(r.name).width > W - 128 && size > 36) { size -= 4; g.font = `800 ${size}px ${F}`; }
+  g.fillText(r.name, 64, 180);
+  // statistieken 3×2
+  const tiles = [['Duur', fmtTime(st.dur)], ['Afstand', st.km.toFixed(2) + ' km'], ['Gem. tempo', paceStr(st.pace) + ' /km'],
+    ['Gem. snelheid', st.avgSpeed.toFixed(1) + ' km/h'], ['Max. snelheid', st.maxSpeed.toFixed(1) + ' km/h'],
+    st.avgHr ? ['Gem. hartslag', st.avgHr + ' bpm'] : ['Geklommen', st.climb + ' m']];
+  const tw = (W - 128 - 2 * 24) / 3, th = 150;
+  tiles.forEach(([l, v], i) => {
+    const x = 64 + (i % 3) * (tw + 24), y = 230 + Math.floor(i / 3) * (th + 24);
+    g.fillStyle = COL.panel; rr(x, y, tw, th, 22);
+    g.fillStyle = COL.muted; g.font = `600 26px ${F}`; g.fillText(l.toUpperCase(), x + 28, y + 50);
+    g.fillStyle = COL.text; let fs = 52; g.font = `800 ${fs}px ${F}`;
+    while (g.measureText(v).width > tw - 56 && fs > 28) { fs -= 2; g.font = `800 ${fs}px ${F}`; }
+    g.fillText(v, x + 28, y + 118);
+  });
+  // grafiek: geplande stappen als blokken + werkelijke snelheid als lijn
+  const cx = 64, cy = 620, cw = W - 128, ch = 330;
+  g.fillStyle = COL.panel; rr(cx - 24, cy - 24, cw + 48, ch + 48, 22);
+  const speeds = r.samples.map(s => s.speed);
+  const stepSp = r.steps ? r.steps.map(s => s.speed) : [];
+  const maxS = Math.max(1, ...speeds, ...stepSp) * 1.08, minS = 0;
+  const yOf = v => cy + ch - (v - minS) / (maxS - minS) * ch;
+  if (r.steps && r.steps.length) {
+    const secs = r.steps.map(s => s.kind === 'time' ? s.value : s.value / (s.speed / 3.6)), tot = secs.reduce((a, b) => a + b, 0);
+    const maxStep = Math.max(...stepSp); let x = cx;
+    r.steps.forEach((s, i) => {
+      const w = secs[i] / tot * cw, ratio = s.speed / maxStep;
+      g.fillStyle = COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .55;
+      g.fillRect(x, yOf(s.speed), Math.max(1, w - 2), cy + ch - yOf(s.speed)); x += w;
+    });
+    g.globalAlpha = 1;
+  }
+  if (r.samples.length > 1) {
+    const T = r.samples[r.samples.length - 1].t || 1;
+    g.strokeStyle = COL.text; g.lineWidth = 4; g.lineJoin = 'round'; g.beginPath();
+    r.samples.forEach((s, i) => { const x = cx + s.t / T * cw, y = yOf(s.speed); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+  }
+  // voet
+  g.fillStyle = COL.accent; g.font = `700 30px ${F}`; g.fillText('Loopband Coach', 64, H - 40);
+  g.fillStyle = COL.muted; g.font = `500 26px ${F}`;
+  const foot = 'VirtuFit Elite Comfort'; g.fillText(foot, W - 64 - g.measureText(foot).width, H - 40);
+  return c;
+}
+function runImageBlob(r) { return new Promise(res => drawRunImage(r).toBlob(res, 'image/png')); }
+function imageFileName(r) { return `loopband-${r.startedAt.slice(0, 16).replace(/[:T]/g, '-')}.png`; }
+async function downloadRunImage() {
+  if (!lastRun) return;
+  const blob = await runImageBlob(lastRun), a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = imageFileName(lastRun); a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function shareRunImage() {
+  if (!lastRun) return;
+  const file = new File([await runImageBlob(lastRun)], imageFileName(lastRun), { type: 'image/png' });
+  try { await navigator.share({ files: [file], title: lastRun.name }); }
+  catch (e) { if (e.name !== 'AbortError') downloadRunImage(); }
+}
+const canShareFiles = (() => { try { return !!navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] }); } catch { return false; } })();
+
 function renderExport() {
   const ok = !!lastRun && lastRun.samples.length >= 5;
   $('btnTcx').disabled = !ok;
+  $('btnImg').disabled = !ok; $('btnShare').disabled = !ok; $('btnShare').hidden = !canShareFiles;
+  const prev = $('imgPreview');
+  if (ok) { prev.src = drawRunImage(lastRun).toDataURL('image/jpeg', 0.7); prev.hidden = false; } else prev.hidden = true;
   $('lastRunInfo').textContent = ok
     ? `Laatste training: ${lastRun.name} · ${new Date(lastRun.startedAt).toLocaleString('nl-BE', { dateStyle: 'short', timeStyle: 'short' })} · ${fmtTime(lastRun.totT)} · ${(lastRun.totD / 1000).toFixed(2)} km`
     : 'Nog geen afgeronde training om te exporteren.';
@@ -1307,6 +1407,8 @@ $('incDown').onclick = () => { run.incOffset -= 0.5; applyTargets(); renderRun()
 $('intUp').onclick = () => { run.intensity = round1((run.intensity + 0.02) * 50) / 50; applyTargets(); renderRun(); };
 $('intDown').onclick = () => { run.intensity = Math.max(0.5, Math.round((run.intensity - 0.02) * 50) / 50); applyTargets(); renderRun(); };
 $('btnTcx').onclick = exportTcx;
+$('btnImg').onclick = downloadRunImage;
+$('btnShare').onclick = shareRunImage;
 window.addEventListener('resize', () => { updatePreview(); renderRun(); });
 window.addEventListener('beforeunload', e => { if (run.state === 'running') { e.preventDefault(); e.returnValue = ''; } });
 
