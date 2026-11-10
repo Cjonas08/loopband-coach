@@ -81,7 +81,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.12</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.13</span></h1>
   <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
   <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -841,8 +841,8 @@ async function applyTargets() {
       en er niet naartoe beweegt, sturen we het doel opnieuw.
    2) Had de band het doel wél bereikt en wijkt de snelheid daarna af en blijft ze stabiel, dan heeft de loper
       op de loopband zelf bijgestuurd → die snelheid overnemen en de rest van de training mee schalen. */
-// Eerste 15 s na (her)start: app is leidend (doelsnelheid blijven sturen, bandsnelheid nooit overnemen).
-const START_GRACE_MS = 15000;
+// Eerste 10 s na (her)start: app is leidend (doelsnelheid blijven sturen, bandsnelheid nooit overnemen).
+const START_GRACE_MS = 10000;
 const enf = { startedAt: 0, lastSpeedSent: 0, lastIncSent: 0, prevSpeed: 0, prevInc: 0, reached: false, reachedInc: false, reachedSince: 0, stableSince: 0, stableIncSince: 0, lastObs: 0, lastObsInc: 0 };
 function detectConsoleChanges(now) {
   const s = run.w.steps[run.idx], sp = live.speed || 0;
