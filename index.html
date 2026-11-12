@@ -122,7 +122,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.15</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.16</span></h1>
   <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
   <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -184,14 +184,14 @@ Uitlopen: 8min @ 8.5 km/h</pre>
           <p class="small muted" style="margin-bottom:0">Duur: <code>10:00</code>, <code>8min</code>, <code>45s</code> of afstand <code>800m</code>, <code>1.5km</code>.
             Snelheid: <code>12 km/h</code> of tempo <code>4:30/km</code>. Helling: <code>2%</code> (optioneel).
             Herhaling: regel <code>5x</code> gevolgd door ingesprongen stappen.
-            De naam vóór de dubbelepunt bepaalt de kleur in de grafiek (opwarmen, rust/herstel, uitlopen; al de rest telt als inspanning).
+            De naam vóór de dubbelepunt bepaalt de kleur in de grafiek (opwarmen, rust/herstel, uitlopen; al de rest telt als inspanning). Inspanning kleurt van groen naar donkerrood volgens de snelheid t.o.v. je drempeltempo (Instellingen).
             Zwift/TrainingPeaks <code>.zwo</code> wordt omgerekend met je drempeltempo (Instellingen).</p>
         </details>
       </div>
       <div class="card">
         <h2>Voorbeeld</h2>
         <canvas id="previewChart"></canvas>
-        <div class="legend"><span><i style="background:var(--k-warm)"></i>Opwarmen</span><span><i style="background:var(--k-work)"></i>Inspanning</span><span><i style="background:var(--k-rest)"></i>Rust</span><span><i style="background:var(--k-cool)"></i>Uitlopen</span></div>
+        <div class="legend"><span><i style="background:var(--k-warm)"></i>Opwarmen</span><span><i style="background:linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444,#991b1b);width:46px"></i>Inspanning (licht → zwaar)</span><span><i style="background:var(--k-rest)"></i>Rust</span><span><i style="background:var(--k-cool)"></i>Uitlopen</span></div>
         <p id="previewSummary" class="small muted"></p>
       </div>
     </div>
@@ -712,7 +712,13 @@ function stepType(label) {
   return 'work';
 }
 const KIND_HEX = { warm: '#60a5fa', work: '#f97316', rest: '#64748b', cool: '#a78bfa' };
-const kindColor = label => KIND_HEX[stepType(label)];
+// Inspanning krijgt een kleur volgens intensiteit: snelheid t.o.v. het drempeltempo uit Instellingen
+const WORK_HEX = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#991b1b'];   // groen → geel → oranje → rood → donkerrood
+function workColor(speed) {
+  const r = speed / (speedFromPace(settings.threshold) || 13.3);
+  return WORK_HEX[r < 0.80 ? 0 : r < 0.90 ? 1 : r < 1.00 ? 2 : r < 1.10 ? 3 : 4];
+}
+const kindColor = s => { const t = stepType(s.label); return t === 'work' ? workColor(s.speed) : KIND_HEX[t]; };
 function drawChart(canvas, w, progressSec, intensity = 1) {
   const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = W * dpr; canvas.height = H * dpr;
@@ -722,7 +728,7 @@ function drawChart(canvas, w, progressSec, intensity = 1) {
   let x = 0;
   for (const s of w.steps) {
     const sw = stepSeconds(s) / total * W, h = (s.speed - minS) / (maxS - minS) * (H - 18) + 10;
-    ctx.fillStyle = kindColor(s.label); ctx.globalAlpha = .9;
+    ctx.fillStyle = kindColor(s); ctx.globalAlpha = .9;
     ctx.fillRect(x, H - h, Math.max(1, sw - 1), h); x += sw;
   }
   ctx.globalAlpha = 1;
@@ -1086,7 +1092,7 @@ function renderStepsTable() {
     const cells = [i + 1, s.label, s.kind === 'time' ? fmtTime(s.value) : s.value + ' m', `${s.speed.toFixed(1)} km/h · ${paceFromSpeed(s.speed)}`, s.incline + '%'];
     cells.forEach((c, ci) => {
       const td = document.createElement('td'); td.textContent = c;
-      if (ci === 1) { const d = document.createElement('span'); d.className = 'kdot'; d.style.background = kindColor(s.label); td.prepend(d); }
+      if (ci === 1) { const d = document.createElement('span'); d.className = 'kdot'; d.style.background = kindColor(s); td.prepend(d); }
       tr.appendChild(td);
     });
     tr.onclick = () => { if (run.state !== 'idle' && confirm(`Naar stap ${i + 1} springen?`)) gotoStep(i); };
@@ -1185,7 +1191,7 @@ function drawRunImage(r) {
     const maxStep = Math.max(...stepSp); let x = cx;
     r.steps.forEach((s, i) => {
       const w = secs[i] / tot * cw, ratio = s.speed / maxStep;
-      g.fillStyle = s.label ? kindColor(s.label) : COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .6;
+      g.fillStyle = s.label ? kindColor(s) : COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .6;
       g.fillRect(x, yOf(s.speed), Math.max(1, w - 2), cy + ch - yOf(s.speed)); x += w;
     });
     g.globalAlpha = 1;
