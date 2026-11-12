@@ -13,6 +13,7 @@
   --text: #e8edf2; --muted: #93a1b0; --accent: #2dd4bf; --accent2: #f97316;
   --danger: #ef4444; --ok: #22c55e; --warn: #eab308;
   --z1: #60a5fa; --z2: #2dd4bf; --z3: #eab308; --z4: #f97316; --z5: #ef4444;
+  --k-warm: #60a5fa; --k-work: #f97316; --k-rest: #64748b; --k-cool: #a78bfa;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -21,27 +22,60 @@
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; flex-wrap: wrap; }
-header h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; }
+header { display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+header h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 nav { display: flex; gap: 4px; }
 nav button { background: none; border: 0; color: var(--muted); padding: 8px 12px; border-radius: 8px; font: inherit; cursor: pointer; }
 nav button.active { background: var(--panel2); color: var(--text); }
+nav .ico { display: none; }
 main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.status span:last-child { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* gsm: kop op één regel, tabbladen als balk onderaan */
+@media (max-width: 700px) {
+  header { padding: 8px 12px; gap: 10px; }
+  header h1 { font-size: 16px; } header h1 .ver { display: none; }
+  .status span:last-child { max-width: 84px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-top: 1px solid var(--line);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 0; }
+  nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; font-size: 12px; min-height: 48px; }
+  nav .ico { display: block; font-size: 18px; line-height: 1; }
+  nav button.active { background: none; color: var(--accent); }
+  main { padding: 10px 10px calc(76px + env(safe-area-inset-bottom)); }
+  .card { padding: 12px; margin-bottom: 10px; }
+}
 .tab { display: none; } .tab.active { display: block; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
 .card h2 { font-size: 15px; margin: 0 0 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
-button.btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 14px; font: inherit; cursor: pointer; min-height: 44px; }
-button.btn:hover { border-color: var(--muted); }
-button.primary { background: var(--accent); color: #04201c; border-color: var(--accent); font-weight: 600; }
-button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
-button.big { font-size: 18px; padding: 14px 20px; min-width: 64px; }
+.btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 14px; font: inherit; font-size: 15px; cursor: pointer; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: #04201c; border-color: var(--accent); font-weight: 600; }
+.btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn.big { font-size: 18px; padding: 14px 20px; min-width: 64px; }
+.btn.ghost-danger { background: none; color: var(--danger); border-color: var(--danger); }
+/* trainingsscherm */
+.transport { display: flex; gap: 10px; align-items: stretch; }
+.transport .btn { min-height: 64px; font-size: 22px; }
+.transport #btnStart { flex: 1; font-size: 22px; font-weight: 700; }
+#btnStart.pause { background: var(--panel2); color: var(--text); border-color: var(--muted); }
+.adjust { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.adj { background: var(--panel2); border-radius: 10px; padding: 8px; }
+.adj .l { font-size: 12px; color: var(--muted); text-transform: uppercase; text-align: center; margin-bottom: 6px; }
+.adj .ctl { display: flex; align-items: center; gap: 6px; }
+.adj .ctl .btn { min-width: 52px; min-height: 52px; font-size: 26px; font-weight: 700; padding: 0; background: var(--panel); }
+.adj .ctl .val { flex: 1; text-align: center; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+.kdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+body.in-run .hide-in-run { display: none !important; }
+details > summary { cursor: pointer; }
 button:disabled { opacity: .45; cursor: not-allowed; }
 textarea, input, select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; }
 textarea { width: 100%; min-height: 220px; font-family: ui-monospace, Consolas, monospace; font-size: 14px; }
@@ -53,7 +87,8 @@ label { color: var(--muted); font-size: 13px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
 .item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel2); cursor: pointer; }
 .item.sel { border-color: var(--accent); }
-.item .name { flex: 1; font-weight: 600; }
+.item .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.item .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item .meta { color: var(--muted); font-size: 13px; }
 .item .btn.mini { min-height: 36px; padding: 4px 10px; }
 dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 20px; max-width: min(420px, calc(100vw - 32px)); }
@@ -62,12 +97,18 @@ dialog::backdrop { background: rgba(0,0,0,.55); }
 .err { color: var(--danger); font-size: 13px; white-space: pre-wrap; }
 canvas { width: 100%; height: 140px; display: block; }
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-@media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) {
+  .metrics { gap: 6px; }
+  .metric { padding: 8px 2px; } .metric .v { font-size: 20px; } .metric .l { font-size: 10px; }
+  .step-timer { font-size: 56px; } .step-now { font-size: 19px; } .target { font-size: 17px; }
+  #runChart { height: 84px; }
+  .steps-table { font-size: 13px; } .steps-table td, .steps-table th { padding: 6px 4px; }
+}
 .metric { background: var(--panel2); border-radius: 10px; padding: 10px; text-align: center; }
 .metric .v { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .metric .l { font-size: 12px; color: var(--muted); text-transform: uppercase; }
 .step-now { font-size: 22px; font-weight: 700; }
-.step-timer { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin: 6px 0; }
+.step-timer { font-size: 64px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin: 0; white-space: nowrap; }
 .target { font-size: 20px; color: var(--accent); font-weight: 600; }
 .progress { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin-top: 10px; }
 .progress > div { height: 100%; background: var(--accent); width: 0; }
@@ -81,13 +122,13 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted" style="font-weight:400">v0.14</span></h1>
-  <span class="status"><span id="dotTm" class="dot"></span><span id="txtTm">Loopband niet verbonden</span></span>
-  <span class="status"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.15</span></h1>
+  <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
+  <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
-    <button data-tab="lib" class="active">Trainingen</button>
-    <button data-tab="run">Uitvoeren</button>
-    <button data-tab="set">Instellingen</button>
+    <button data-tab="lib" class="active"><span class="ico">📋</span>Trainingen</button>
+    <button data-tab="run"><span class="ico">🏃</span>Uitvoeren</button>
+    <button data-tab="set"><span class="ico">⚙️</span>Instellingen</button>
   </nav>
 </header>
 
@@ -101,27 +142,12 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
         <div id="libList" class="list"></div>
         <div class="row" style="margin-top:12px">
           <button class="btn" id="btnNew">+ Nieuwe training</button>
-          <label class="btn" style="display:inline-flex;align-items:center;cursor:pointer;color:var(--text);font-size:15px">
-            Importeer bestand (.zwo / .json / .txt)
+          <label class="btn" title="Bestanden van het type .zwo, .json of .txt">
+            ⬆ Importeer bestand
             <input type="file" id="fileImport" accept=".zwo,.json,.txt,.xml" multiple hidden>
           </label>
         </div>
       </div>
-      <div class="card">
-        <h2>Formaat</h2>
-        <pre class="help">Titel: Intervallen 5×1000m
-Opwarmen: 10:00 @ 9 km/h 1%
-5x
-  Snel: 1000m @ 4:00/km 1%
-  Rust: 2:00 @ 7.5 km/h 0%
-Uitlopen: 8min @ 8.5 km/h</pre>
-        <p class="small muted">Duur: <code>10:00</code>, <code>8min</code>, <code>45s</code> of afstand <code>800m</code>, <code>1.5km</code>.
-          Snelheid: <code>12 km/h</code> of tempo <code>4:30/km</code>. Helling: <code>2%</code> (optioneel).
-          Herhaling: regel <code>5x</code> gevolgd door ingesprongen stappen.
-          Zwift/TrainingPeaks <code>.zwo</code> wordt omgerekend met je drempeltempo (Instellingen).</p>
-      </div>
-    </div>
-    <div>
       <div class="card">
         <h2>Training uit instructies</h2>
         <p class="small muted" style="margin-top:0">Typ de training zoals je coach ze opschrijft. Snelheid als tempo (<code>aan 4'00</code>, <code>4:30 min/km</code>) of in <code>km/h</code> (<code>aan 12 km/u</code>). Duur: <code>2'</code> = 2 minuten, <code>30''</code> = 30 seconden, of afstand <code>400m</code>, <code>2km</code>.</p>
@@ -134,6 +160,8 @@ Uitlopen: 8min @ 8.5 km/h</pre>
           <span id="micState" class="small muted"></span>
         </div>
       </div>
+    </div>
+    <div>
       <div class="card" id="editorCard">
         <h2>Editor <span id="dirty" style="color:var(--warn);text-transform:none;letter-spacing:0"></span></h2>
         <p class="small muted" style="margin-top:-6px">Klik op ✏️ bij een training in de bibliotheek om ze hier aan te passen, en druk daarna op Opslaan.</p>
@@ -143,12 +171,27 @@ Uitlopen: 8min @ 8.5 km/h</pre>
           <button class="btn primary" id="btnSave">Opslaan</button>
           <button class="btn" id="btnLoad">Laden om uit te voeren →</button>
           <button class="btn" id="btnExportJson">Exporteer JSON</button>
-          <button class="btn danger" id="btnDelete">Verwijder</button>
+          <button class="btn ghost-danger" id="btnDelete">Verwijder</button>
         </div>
+        <details style="margin-top:12px">
+          <summary class="small">Hoe schrijf ik een training?</summary>
+          <pre class="help">Titel: Intervallen 5×1000m
+Opwarmen: 10:00 @ 9 km/h 1%
+5x
+  Snel: 1000m @ 4:00/km 1%
+  Rust: 2:00 @ 7.5 km/h 0%
+Uitlopen: 8min @ 8.5 km/h</pre>
+          <p class="small muted" style="margin-bottom:0">Duur: <code>10:00</code>, <code>8min</code>, <code>45s</code> of afstand <code>800m</code>, <code>1.5km</code>.
+            Snelheid: <code>12 km/h</code> of tempo <code>4:30/km</code>. Helling: <code>2%</code> (optioneel).
+            Herhaling: regel <code>5x</code> gevolgd door ingesprongen stappen.
+            De naam vóór de dubbelepunt bepaalt de kleur in de grafiek (opwarmen, rust/herstel, uitlopen; al de rest telt als inspanning).
+            Zwift/TrainingPeaks <code>.zwo</code> wordt omgerekend met je drempeltempo (Instellingen).</p>
+        </details>
       </div>
       <div class="card">
         <h2>Voorbeeld</h2>
         <canvas id="previewChart"></canvas>
+        <div class="legend"><span><i style="background:var(--k-warm)"></i>Opwarmen</span><span><i style="background:var(--k-work)"></i>Inspanning</span><span><i style="background:var(--k-rest)"></i>Rust</span><span><i style="background:var(--k-cool)"></i>Uitlopen</span></div>
         <p id="previewSummary" class="small muted"></p>
       </div>
     </div>
@@ -157,72 +200,34 @@ Uitlopen: 8min @ 8.5 km/h</pre>
 
 <!-- ============ UITVOEREN ============ -->
 <section id="tab-run" class="tab">
-  <div class="card">
+  <div class="card hide-in-run" id="runSetup">
     <div class="row">
       <button class="btn primary" id="btnConnect">Verbind loopband</button>
       <button class="btn" id="btnConnectHr">Verbind hartslagband</button>
-      <button class="btn" id="btnSim">Simulator gebruiken</button>
       <span id="tmInfo" class="small muted"></span>
     </div>
     <div class="row" style="margin-top:12px">
       <label for="runSelect" style="font-size:15px;color:var(--text)">Training:</label>
-      <select id="runSelect" style="flex:1;min-width:200px;min-height:44px"></select>
+      <select id="runSelect" style="flex:1;min-width:0;min-height:44px"></select>
     </div>
   </div>
 
   <div class="card">
-    <div class="row" style="justify-content:space-between">
-      <div>
-        <div class="muted small" id="runName">Geen training geladen</div>
-        <div class="step-now" id="stepLabel">—</div>
+    <div class="muted small" id="runName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Geen training geladen</div>
+    <div class="step-now" id="stepLabel">—</div>
+    <div class="row" style="justify-content:space-between;flex-wrap:nowrap;align-items:flex-end">
+      <div style="min-width:0">
         <div class="target" id="stepTarget"></div>
-      </div>
-      <div style="text-align:right">
-        <div class="muted small">Resterend in stap</div>
-        <div class="step-timer" id="stepRemain">00:00</div>
         <div class="muted small" id="nextStep"></div>
       </div>
+      <div class="step-timer" id="stepRemain" title="Resterend in deze stap">00:00</div>
     </div>
     <div class="progress"><div id="totalProgress"></div></div>
     <canvas id="runChart" style="margin-top:12px"></canvas>
   </div>
 
-  <div class="card">
-    <div class="metrics">
-      <div class="metric"><div class="v" id="mSpeed">0.0</div><div class="l">km/h</div></div>
-      <div class="metric"><div class="v" id="mPace">--:--</div><div class="l">min/km</div></div>
-      <div class="metric"><div class="v" id="mIncline">0.0</div><div class="l">helling %</div></div>
-      <div class="metric"><div class="v" id="mHr">--</div><div class="l">hartslag</div></div>
-      <div class="metric"><div class="v" id="mTime">00:00</div><div class="l">totale tijd</div></div>
-      <div class="metric"><div class="v" id="mDist">0.00</div><div class="l">km</div></div>
-      <div class="metric"><div class="v" id="mRemain">00:00</div><div class="l">resterend</div></div>
-      <div class="metric"><div class="v" id="mIntensity">100%</div><div class="l">intensiteit</div></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="row" style="justify-content:center">
-      <button class="btn big" id="btnPrev" title="Vorige stap">⏮</button>
-      <button class="btn big primary" id="btnStart">▶ Start</button>
-      <button class="btn big" id="btnPause">⏸ Pauze</button>
-      <button class="btn big" id="btnNext" title="Volgende stap">⏭</button>
-      <button class="btn big danger" id="btnStop">⏹ Stop</button>
-    </div>
-    <div class="row" style="justify-content:center;margin-top:12px">
-      <span class="muted small">Snelheid nu:</span>
-      <button class="btn" id="spdDown">−0.5</button>
-      <button class="btn" id="spdUp">+0.5</button>
-      <span class="muted small" style="margin-left:12px">Helling nu:</span>
-      <button class="btn" id="incDown">−0.5%</button>
-      <button class="btn" id="incUp">+0.5%</button>
-      <span class="muted small" style="margin-left:12px">Hele training:</span>
-      <button class="btn" id="intDown">−2%</button>
-      <button class="btn" id="intUp">+2%</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Exporteren</h2>
+  <div class="card" id="exportCard" hidden>
+    <h2>Training exporteren</h2>
     <p id="lastRunInfo" class="small muted" style="margin-top:0"></p>
     <div class="row">
       <span id="stravaButtons" class="row"></span>
@@ -236,6 +241,40 @@ Uitlopen: 8min @ 8.5 km/h</pre>
         <button class="btn" id="btnShare" disabled hidden>📤 Delen (bv. naar Strava of galerij)</button>
         <p class="small muted" style="margin:0">Voeg de afbeelding in Strava toe als foto bij de activiteit (een foto kan niet in een TCX- of FIT-bestand).</p>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="transport">
+      <button class="btn" id="btnPrev" title="Vorige stap" aria-label="Vorige stap">⏮</button>
+      <button class="btn primary" id="btnStart">▶ Start</button>
+      <button class="btn" id="btnNext" title="Volgende stap" aria-label="Volgende stap">⏭</button>
+    </div>
+    <div class="adjust">
+      <div class="adj">
+        <div class="l">Snelheid (km/h)</div>
+        <div class="ctl"><button class="btn" id="spdDown" aria-label="Snelheid 0,5 lager">−</button><span class="val" id="spdVal">–</span><button class="btn" id="spdUp" aria-label="Snelheid 0,5 hoger">+</button></div>
+      </div>
+      <div class="adj">
+        <div class="l">Helling (%)</div>
+        <div class="ctl"><button class="btn" id="incDown" aria-label="Helling 0,5 lager">−</button><span class="val" id="incVal">–</span><button class="btn" id="incUp" aria-label="Helling 0,5 hoger">+</button></div>
+      </div>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button class="btn ghost-danger" id="btnStop" hidden>⏹ Training stoppen</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="metrics">
+      <div class="metric"><div class="v" id="mSpeed">0.0</div><div class="l">km/h</div></div>
+      <div class="metric"><div class="v" id="mPace">--:--</div><div class="l">min/km</div></div>
+      <div class="metric"><div class="v" id="mIncline">0.0</div><div class="l">helling %</div></div>
+      <div class="metric"><div class="v" id="mHr">--</div><div class="l">hartslag</div></div>
+      <div class="metric"><div class="v" id="mTime">00:00</div><div class="l">totale tijd</div></div>
+      <div class="metric"><div class="v" id="mDist">0.00</div><div class="l">km</div></div>
+      <div class="metric"><div class="v" id="mRemain">00:00</div><div class="l">resterend</div></div>
+      <div class="metric"><div class="v" id="mIntensity">100%</div><div class="l">intensiteit</div></div>
     </div>
   </div>
 
@@ -277,6 +316,10 @@ Uitlopen: 8min @ 8.5 km/h</pre>
   </div>
   <div class="card">
     <h2>Diagnose loopband</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" id="btnSim">Simulator gebruiken</button>
+      <span class="small muted">Test een training zonder loopband.</span>
+    </div>
     <p class="small muted">Na verbinden zie je hier wat de loopband via FTMS ondersteunt.</p>
     <pre class="help" id="diag">Nog niet verbonden.</pre>
     <p class="small muted">Logboek van opdrachten naar de loopband (nieuwste bovenaan):</p>
@@ -587,7 +630,7 @@ function renderLib() {
     catch (e) { w = { name: item.source.split('\n')[0] }; meta = 'fout in training'; }
     const div = document.createElement('div');
     div.className = 'item' + (item.id === selectedId ? ' sel' : '');
-    div.innerHTML = `<span class="name"></span><span class="meta"></span>
+    div.innerHTML = `<span class="info"><span class="name"></span><span class="meta"></span></span>
       <button class="btn mini" data-a="edit" title="Aanpassen">✏️</button>
       <button class="btn mini" data-a="copy" title="Kopie maken">⧉</button>
       <button class="btn mini" data-a="run" title="Uitvoeren">▶</button>`;
@@ -660,11 +703,16 @@ function addToLibrary(w, source) {
 }
 
 /* ====================== Chart ====================== */
-function zoneColor(speed, maxSpeed) {
-  const r = speed / maxSpeed;
-  const v = r > .92 ? '--z5' : r > .82 ? '--z4' : r > .72 ? '--z3' : r > .6 ? '--z2' : '--z1';
-  return getComputedStyle(document.documentElement).getPropertyValue(v);
+// Soort stap op basis van de naam: opwarmen / rust / uitlopen / inspanning (al de rest)
+function stepType(label) {
+  const l = ' ' + String(label || '').toLowerCase() + ' ';
+  if (/\b(opwarm\w*|warm[- ]?up|warming[- ]?up|wu|inlopen)\b/.test(l)) return 'warm';
+  if (/\b(cd|cool[- ]?down|cooling[- ]?down|uitlop\w*|afkoel\w*|uitwandel\w*)\b/.test(l)) return 'cool';
+  if (/\b(rust\w*|herstel\w*|recup\w*|wandel\w*|dribbel\w*|jog\w*|pauze)\b/.test(l)) return 'rest';
+  return 'work';
 }
+const KIND_HEX = { warm: '#60a5fa', work: '#f97316', rest: '#64748b', cool: '#a78bfa' };
+const kindColor = label => KIND_HEX[stepType(label)];
 function drawChart(canvas, w, progressSec, intensity = 1) {
   const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = W * dpr; canvas.height = H * dpr;
@@ -674,7 +722,7 @@ function drawChart(canvas, w, progressSec, intensity = 1) {
   let x = 0;
   for (const s of w.steps) {
     const sw = stepSeconds(s) / total * W, h = (s.speed - minS) / (maxS - minS) * (H - 18) + 10;
-    ctx.fillStyle = zoneColor(s.speed, maxS); ctx.globalAlpha = .85;
+    ctx.fillStyle = kindColor(s.label); ctx.globalAlpha = .9;
     ctx.fillRect(x, H - h, Math.max(1, sw - 1), h); x += sw;
   }
   ctx.globalAlpha = 1;
@@ -820,7 +868,7 @@ const run = { w: null, idx: 0, stepT: 0, stepD: 0, totT: 0, totD: 0, state: 'idl
 function log(m) { console.log('[loopband]', m); }
 function setTmStatus() {
   const on = !!tm; $('dotTm').className = 'dot' + (on ? (tm instanceof SimTreadmill ? ' sim' : ' on') : '');
-  $('txtTm').textContent = on ? tm.name : 'Loopband niet verbonden';
+  $('txtTm').textContent = on ? tm.name : 'Geen loopband';
   $('diag').textContent = on ? tm.diag : 'Nog niet verbonden.';
   $('tmInfo').textContent = on && tm.canSpeed === false ? '⚠ Deze loopband meldt dat snelheid niet op afstand instelbaar is.' : '';
 }
@@ -1007,27 +1055,40 @@ function renderRun() {
   $('mTime').textContent = fmtTime(run.totT);
   $('mDist').textContent = (run.totD / 1000).toFixed(2);
   $('mIntensity').textContent = Math.round(run.intensity * 100) + '%';
-  $('btnStart').textContent = run.state === 'paused' ? '▶ Hervat' : '▶ Start';
+  // één hoofdknop: Start → Pauze → Hervat
+  const active = run.state === 'running' || run.state === 'paused', bs = $('btnStart');
+  const label = run.state === 'running' ? '⏸ Pauze' : run.state === 'paused' ? '▶ Hervat' : run.state === 'done' ? '▶ Opnieuw starten' : '▶ Start';
+  if (bs.textContent !== label) bs.textContent = label;
+  bs.classList.toggle('pause', run.state === 'running');
+  document.body.classList.toggle('in-run', active);
+  $('btnStop').hidden = !active;
+  $('exportCard').hidden = active || !exportReady;
+  $('spdVal').textContent = run.w && run.state !== 'done' ? targetSpeed().toFixed(1) : '–';
+  $('incVal').textContent = run.w && run.state !== 'done' ? targetIncline().toFixed(1) : '–';
   if (!run.w) return;
   const s = run.w.steps[run.idx], next = run.w.steps[run.idx + 1];
   const total = workoutTotals(run.w).t, pe = plannedElapsed();
   $('stepLabel').textContent = run.state === 'done' ? 'Klaar ✔' : `${run.idx + 1}/${run.w.steps.length} · ${s.label}`;
   $('stepTarget').textContent = run.state === 'done' ? '' :
-    `${targetSpeed().toFixed(1)} km/h (${paceFromSpeed(targetSpeed())}/km) · ${targetIncline()}%` + (s.kind === 'distance' ? ` · ${Math.max(0, Math.round(s.value - run.stepD))} m te gaan` : '');
+    `${targetSpeed().toFixed(1)} km/h · ${targetIncline()}%` + (s.kind === 'distance' ? ` · ${Math.max(0, Math.round(s.value - run.stepD))} m te gaan` : '');
   $('stepRemain').textContent = run.state === 'done' ? '00:00' : fmtTime(stepRemainSec());
-  $('nextStep').textContent = next ? `Daarna: ${next.label} · ${next.speed} km/h` : 'Laatste stap';
+  $('nextStep').textContent = run.state === 'done' ? '' : next ?`Daarna: ${next.label} · ${next.speed} km/h` : 'Laatste stap';
   $('mRemain').textContent = fmtTime(total - pe);
   $('totalProgress').style.width = (pe / total * 100) + '%';
   drawChart($('runChart'), run.w, pe);
 }
 function renderStepsTable() {
   const t = $('stepsTable'); if (!run.w) { t.innerHTML = ''; return; }
-  t.innerHTML = '<tr><th>#</th><th>Stap</th><th>Duur</th><th>Snelheid</th><th>Tempo</th><th>Helling</th></tr>';
+  t.innerHTML = '<tr><th>#</th><th>Stap</th><th>Duur</th><th>Snelheid · tempo</th><th>Helling</th></tr>';
   run.w.steps.forEach((s, i) => {
     const tr = document.createElement('tr');
     tr.className = i === run.idx ? 'cur' : i < run.idx ? 'done' : '';
-    const cells = [i + 1, s.label, s.kind === 'time' ? fmtTime(s.value) : s.value + ' m', s.speed.toFixed(1) + ' km/h', paceFromSpeed(s.speed), s.incline + '%'];
-    cells.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+    const cells = [i + 1, s.label, s.kind === 'time' ? fmtTime(s.value) : s.value + ' m', `${s.speed.toFixed(1)} km/h · ${paceFromSpeed(s.speed)}`, s.incline + '%'];
+    cells.forEach((c, ci) => {
+      const td = document.createElement('td'); td.textContent = c;
+      if (ci === 1) { const d = document.createElement('span'); d.className = 'kdot'; d.style.background = kindColor(s.label); td.prepend(d); }
+      tr.appendChild(td);
+    });
     tr.onclick = () => { if (run.state !== 'idle' && confirm(`Naar stap ${i + 1} springen?`)) gotoStep(i); };
     t.appendChild(tr);
   });
@@ -1058,11 +1119,12 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 /* De laatst afgeronde training wordt bewaard, zodat exporteren ook na herladen
    (bv. na het koppelen met Strava) nog kan. */
 let lastRun = store.get('lastRun', null);
+let exportReady = false;   // er is een afgeronde training om te exporteren (blok enkel zichtbaar buiten een lopende training)
 function snapshotRun() {
   if (!run.samples.length) return;
   lastRun = { name: run.w?.name || 'Loopbandtraining', startedAt: (run.startedAt || new Date()).toISOString(),
     totT: run.totT, totD: run.totD, samples: run.samples.map(s => ({ t: +s.t.toFixed(1), d: +s.d.toFixed(1), speed: s.speed, hr: s.hr || 0, inc: s.incline || 0 })),
-    steps: run.w ? run.w.steps.map(s => ({ kind: s.kind, value: s.value, speed: s.speed, incline: s.incline })) : null,
+    steps: run.w ? run.w.steps.map(s => ({ label: s.label, kind: s.kind, value: s.value, speed: s.speed, incline: s.incline })) : null,
     summary: run.w ? run.w.steps.map(s => `${s.label}: ${s.kind === 'time' ? fmtTime(s.value) : s.value + ' m'} @ ${s.speed} km/h ${s.incline}%`).join('\n') : '',
     uploaded: {} };
   store.set('lastRun', lastRun);
@@ -1123,7 +1185,7 @@ function drawRunImage(r) {
     const maxStep = Math.max(...stepSp); let x = cx;
     r.steps.forEach((s, i) => {
       const w = secs[i] / tot * cw, ratio = s.speed / maxStep;
-      g.fillStyle = COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .55;
+      g.fillStyle = s.label ? kindColor(s.label) : COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .6;
       g.fillRect(x, yOf(s.speed), Math.max(1, w - 2), cy + ch - yOf(s.speed)); x += w;
     });
     g.globalAlpha = 1;
@@ -1158,6 +1220,7 @@ const canShareFiles = (() => { try { return !!navigator.canShare && navigator.ca
 
 function renderExport() {
   const ok = !!lastRun && lastRun.samples.length >= 5;
+  exportReady = ok;
   $('btnTcx').disabled = !ok;
   $('btnImg').disabled = !ok; $('btnShare').disabled = !ok; $('btnShare').hidden = !canShareFiles;
   const prev = $('imgPreview');
@@ -1208,13 +1271,18 @@ function renderStravaSettings() {
   const box = $('stravaProfiles'); box.innerHTML = '';
   for (const [key, p] of Object.entries(strava)) {
     const card = document.createElement('div'); card.className = 'item'; card.style.cssText = 'flex-direction:column;align-items:stretch;cursor:default';
-    card.innerHTML = `
-      <div class="row"><input data-f="name" style="width:140px;font-weight:600"> <span class="small" data-f="status"></span></div>
-      <div class="row">
+    const linked = !!p.refresh_token;
+    const fields = `
+      <div class="row" style="margin-top:8px">
         <div class="field"><label>Client ID</label><input data-f="clientId" inputmode="numeric" style="width:120px"></div>
-        <div class="field" style="flex:1"><label>Client Secret</label><input data-f="clientSecret" type="password" style="width:100%;min-width:180px"></div>
+        <div class="field" style="flex:1"><label>Client Secret</label><input data-f="clientSecret" type="password" style="width:100%;min-width:160px"></div>
       </div>
-      <div class="row"><button class="btn" data-a="connect" style="border-color:#fc4c02">Koppel met Strava</button><button class="btn" data-a="disconnect">Ontkoppel</button></div>`;
+      <div class="row" style="margin-top:8px"><button class="btn" data-a="connect" style="border-color:#fc4c02">${linked ? 'Opnieuw koppelen' : 'Koppel met Strava'}</button></div>`;
+    // Gekoppeld: alleen de status tonen, de technische velden zitten ingeklapt
+    card.innerHTML = `
+      <div class="row"><input data-f="name" aria-label="Naam" style="width:140px;font-weight:600"> <span class="small" data-f="status" style="flex:1"></span>
+        <button class="btn" data-a="disconnect" ${linked ? '' : 'hidden'}>Ontkoppel</button></div>
+      ${linked ? `<details><summary class="small muted">Gegevens wijzigen</summary>${fields}</details>` : fields}`;
     for (const f of ['name', 'clientId', 'clientSecret']) {
       const el = card.querySelector(`[data-f=${f}]`); el.value = p[f] || '';
       el.onchange = () => { p[f] = el.value.trim(); saveStrava(); renderExport(); };
@@ -1386,10 +1454,9 @@ $('btnNl').onclick = async () => {
   };
 })();
 $('btnConnect').onclick = () => useTreadmill(new FtmsTreadmill(), settings.allDevices);
-$('btnSim').onclick = () => useTreadmill(new SimTreadmill());
+$('btnSim').onclick = async () => { await useTreadmill(new SimTreadmill()); switchTab('run'); };
 $('btnConnectHr').onclick = connectHr;
-$('btnStart').onclick = startRun;
-$('btnPause').onclick = pauseRun;
+$('btnStart').onclick = () => run.state === 'running' ? pauseRun() : startRun();
 $('btnStop').onclick = () => { if (confirm('Training stoppen?')) stopRun(); };
 $('btnNext').onclick = () => run.state !== 'idle' && gotoStep(run.idx + 1);
 $('btnPrev').onclick = () => run.state !== 'idle' && gotoStep(run.idx - 1);
@@ -1404,8 +1471,6 @@ $('spdUp').onclick = () => nudgeSpeed(0.5);
 $('spdDown').onclick = () => nudgeSpeed(-0.5);
 $('incUp').onclick = () => { run.incOffset += 0.5; applyTargets(); renderRun(); };
 $('incDown').onclick = () => { run.incOffset -= 0.5; applyTargets(); renderRun(); };
-$('intUp').onclick = () => { run.intensity = round1((run.intensity + 0.02) * 50) / 50; applyTargets(); renderRun(); };
-$('intDown').onclick = () => { run.intensity = Math.max(0.5, Math.round((run.intensity - 0.02) * 50) / 50); applyTargets(); renderRun(); };
 $('btnTcx').onclick = exportTcx;
 $('btnImg').onclick = downloadRunImage;
 $('btnShare').onclick = shareRunImage;
