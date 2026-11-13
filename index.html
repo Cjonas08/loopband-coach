@@ -13,7 +13,7 @@
   --text: #e8edf2; --muted: #93a1b0; --accent: #2dd4bf; --accent2: #f97316;
   --danger: #ef4444; --ok: #22c55e; --warn: #eab308;
   --z1: #60a5fa; --z2: #2dd4bf; --z3: #eab308; --z4: #f97316; --z5: #ef4444;
-  --k-warm: #60a5fa; --k-work: #f97316; --k-rest: #64748b; --k-cool: #a78bfa;
+  --k-warm: #67e8f9; --k-work: #f97316; --k-rest: #64748b; --k-cool: #a78bfa;
 }
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
@@ -122,7 +122,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.17</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.18</span></h1>
   <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
   <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -191,7 +191,7 @@ Uitlopen: 8min @ 8.5 km/h</pre>
       <div class="card">
         <h2>Voorbeeld</h2>
         <canvas id="previewChart"></canvas>
-        <div class="legend"><span><i style="background:var(--k-warm)"></i>Opwarmen</span><span><i style="background:linear-gradient(90deg,#22c55e,#eab308,#f97316,#ef4444,#991b1b);width:46px"></i>Inspanning (licht → zwaar)</span><span><i style="background:var(--k-rest)"></i>Rust</span><span><i style="background:var(--k-cool)"></i>Uitlopen</span></div>
+        <div class="legend"><span><i style="background:var(--k-warm)"></i>Opwarmen</span><span><i style="background:linear-gradient(90deg,#3b82f6,#22c55e,#eab308,#f97316,#991b1b);width:46px"></i>Inspanning (licht → zwaar)</span><span><i style="background:var(--k-rest)"></i>Rust</span><span><i style="background:var(--k-cool)"></i>Uitlopen</span></div>
         <p id="previewSummary" class="small muted"></p>
       </div>
     </div>
@@ -408,7 +408,7 @@ function bindSettings() {
   }
 }
 /* Snelheidszones: 4 bovengrenzen (km/h) voor zone 1-4; zone 5 = alles daarboven */
-const ZONE_HEX = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#991b1b'];   // groen → geel → oranje → rood → donkerrood
+const ZONE_HEX = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#991b1b'];   // blauw → groen → geel → oranje → donkerrood
 const ZONE_NAMES = ['Zone 1 · licht', 'Zone 2 · duur', 'Zone 3 · tempo', 'Zone 4 · drempel', 'Zone 5 · maximaal'];
 function defaultZones() { const thr = speedFromPace(settings.threshold) || 13.3; return [0.80, 0.90, 1.00, 1.10].map(f => round1(thr * f)); }
 function zones() { const z = settings.zones; return Array.isArray(z) && z.length === 4 && z.every(v => v > 0) ? z : defaultZones(); }
@@ -965,7 +965,7 @@ function stepType(label) {
   if (/\b(rust\w*|herstel\w*|recup\w*|wandel\w*|dribbel\w*|jog\w*|pauze)\b/.test(l)) return 'rest';
   return 'work';
 }
-const KIND_HEX = { warm: '#60a5fa', work: '#f97316', rest: '#64748b', cool: '#a78bfa' };
+const KIND_HEX = { warm: '#67e8f9', work: '#f97316', rest: '#64748b', cool: '#a78bfa' };
 // Inspanning krijgt een kleur volgens intensiteit: snelheid t.o.v. het drempeltempo uit Instellingen
 function workColor(speed) {
   const z = zones();
