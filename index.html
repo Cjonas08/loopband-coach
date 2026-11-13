@@ -122,7 +122,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.19</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.20</span></h1>
   <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
   <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -1573,7 +1573,7 @@ function stravaConnect(key) {
   if (run.state === 'running' && !confirm('Er loopt een training. De pagina gaat even naar Strava. Doorgaan?')) return;
   const u = new URL('https://www.strava.com/oauth/authorize');
   u.search = new URLSearchParams({ client_id: p.clientId, response_type: 'code', redirect_uri: redirectUri(),
-    approval_prompt: 'auto', scope: 'activity:write', state: 'strava-' + key });
+    approval_prompt: 'auto', scope: 'read,activity:read_all,profile:read_all,activity:write', state: 'strava-' + key });
   location.href = u.toString();
 }
 async function stravaToken(p, params) {
