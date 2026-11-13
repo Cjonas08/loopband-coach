@@ -122,7 +122,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.16</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.17</span></h1>
   <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
   <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -142,9 +142,9 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
         <div id="libList" class="list"></div>
         <div class="row" style="margin-top:12px">
           <button class="btn" id="btnNew">+ Nieuwe training</button>
-          <label class="btn" title="Bestanden van het type .zwo, .json of .txt">
-            ⬆ Importeer bestand
-            <input type="file" id="fileImport" accept=".zwo,.json,.txt,.xml" multiple hidden>
+          <label class="btn" title="Bestanden van het type .fit, .zwo, .json of .txt">
+            ⬆ Importeer .fit / .zwo
+            <input type="file" id="fileImport" accept=".fit,.zwo,.json,.txt,.xml" multiple hidden>
           </label>
         </div>
       </div>
@@ -301,6 +301,26 @@ Uitlopen: 8min @ 8.5 km/h</pre>
     </div>
   </div>
   <div class="card">
+    <h2>Snelheidszones</h2>
+    <p class="small muted" style="margin-top:0">Bepalen de kleur van de inspanningsblokken. Vul per zone de bovengrens in, als snelheid (<code>12</code> km/h) of als tempo (<code>5:00</code> per km).</p>
+    <div id="zoneRows" class="list"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnZonesReset">Zones berekenen uit drempeltempo</button>
+      <span id="zoneMsg" class="small err"></span>
+    </div>
+  </div>
+  <div class="card" id="accountCard">
+    <h2>Account en synchronisatie</h2>
+    <div id="accountBox"></div>
+    <details style="margin-top:10px">
+      <summary class="small muted">Geavanceerd: adres van de sync-server</summary>
+      <div class="row" style="margin-top:8px">
+        <input id="syncUrl" placeholder="https://…workers.dev" style="flex:1;min-width:0">
+        <button class="btn" id="btnSyncUrl">Bewaar</button>
+      </div>
+    </details>
+  </div>
+  <div class="card">
     <h2>Strava</h2>
     <div id="stravaProfiles" class="list"></div>
     <details style="margin-top:12px">
@@ -334,6 +354,15 @@ Uitlopen: 8min @ 8.5 km/h</pre>
 </section>
 </main>
 
+<dialog id="welcomeDlg">
+  <h3 style="margin:0 0 8px">Welkom bij Loopband Coach</h3>
+  <p class="small">Met een account zie je dezelfde trainingen op je pc, gsm en tablet. Zonder account werkt alles ook, maar blijven je trainingen alleen op dit toestel.</p>
+  <div class="list">
+    <button class="btn primary" id="welcomeLogin">Aanmelden of account maken</button>
+    <button class="btn" id="welcomeSkip">Verder zonder account</button>
+  </div>
+  <p class="small muted" style="margin-bottom:0">Je kunt dit later nog wijzigen bij Instellingen.</p>
+</dialog>
 <dialog id="incDlg">
   <h3 style="margin:0 0 8px">Helling kiezen</h3>
   <p id="incDlgText" class="small"></p>
@@ -378,6 +407,37 @@ function bindSettings() {
     });
   }
 }
+/* Snelheidszones: 4 bovengrenzen (km/h) voor zone 1-4; zone 5 = alles daarboven */
+const ZONE_HEX = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#991b1b'];   // groen → geel → oranje → rood → donkerrood
+const ZONE_NAMES = ['Zone 1 · licht', 'Zone 2 · duur', 'Zone 3 · tempo', 'Zone 4 · drempel', 'Zone 5 · maximaal'];
+function defaultZones() { const thr = speedFromPace(settings.threshold) || 13.3; return [0.80, 0.90, 1.00, 1.10].map(f => round1(thr * f)); }
+function zones() { const z = settings.zones; return Array.isArray(z) && z.length === 4 && z.every(v => v > 0) ? z : defaultZones(); }
+function parseSpeedOrPace(str) {
+  const t = String(str).trim().replace(',', '.');
+  const p = /^(\d{1,2})[:'](\d{2})$/.exec(t);
+  if (p) return round1(3600 / (+p[1] * 60 + +p[2]));
+  const v = parseFloat(t); return v > 0 && v < 40 ? round1(v) : null;
+}
+function renderZones() {
+  const box = $('zoneRows'), z = zones(); box.innerHTML = '';
+  ZONE_NAMES.forEach((name, i) => {
+    const row = document.createElement('div'); row.className = 'row';
+    const from = i === 0 ? 'tot' : i === 4 ? 'vanaf' : 'tot';
+    row.innerHTML = `<span class="kdot" style="width:14px;height:14px;border-radius:3px;background:${ZONE_HEX[i]}"></span>
+      <span style="width:130px">${name}</span><span class="small muted" style="width:40px">${from}</span>` +
+      (i < 4 ? `<input data-z="${i}" value="${z[i]}" inputmode="decimal" style="width:76px" aria-label="Bovengrens ${name}"> <span class="small muted">km/h · ${paceFromSpeed(z[i])}/km</span>`
+             : `<span style="width:76px;padding-left:10px">${z[3]}</span> <span class="small muted">km/h · ${paceFromSpeed(z[3])}/km</span>`);
+    box.appendChild(row);
+  });
+  box.querySelectorAll('input').forEach(inp => inp.onchange = () => {
+    const vals = [...box.querySelectorAll('input')].map(x => parseSpeedOrPace(x.value));
+    if (vals.some(v => v == null)) { $('zoneMsg').textContent = 'Vul een snelheid (bv. 12) of tempo (bv. 5:00) in.'; return; }
+    if (vals.some((v, i) => i && v <= vals[i - 1])) { $('zoneMsg').textContent = 'Elke zone moet sneller zijn dan de vorige.'; return; }
+    $('zoneMsg').textContent = ''; settings.zones = vals; store.set('settings', settings);
+    renderZones(); zonesChanged();
+  });
+}
+function zonesChanged() { renderLib(); updatePreview(); renderStepsTable(); renderExport(); }
 
 /* ====================== Workout parsing ====================== */
 // Interne vorm: { name, steps: [{ label, kind: 'time'|'distance', value, speed, incline }] }
@@ -472,6 +532,79 @@ function parseZwo(xml) {
   }
   if (!steps.length) throw new Error('Geen stappen herkend in .zwo');
   return { name, steps: steps.filter(s => s.value > 0) };
+}
+
+/* FIT-trainingsbestand (Garmin / TrainingPeaks "Export to FIT"). Minimale decoder: alleen de berichten
+   workout (26) en workout_step (27) worden gelezen. Geeft { name, steps, notes[] }. */
+function parseFit(buf) {
+  const dv = new DataView(buf), hs = dv.getUint8(0);
+  if (dv.byteLength < 14 || String.fromCharCode(dv.getUint8(8), dv.getUint8(9), dv.getUint8(10), dv.getUint8(11)) !== '.FIT') throw new Error('Geen geldig FIT-bestand');
+  const end = Math.min(dv.byteLength, hs + dv.getUint32(4, true));
+  const defs = {}, msgs = []; let o = hs;
+  const readField = (off, size, base, le) => {
+    switch (base & 0x1f) {
+      case 0: case 2: case 10: case 13: return dv.getUint8(off);
+      case 1: return dv.getInt8(off);
+      case 3: return dv.getInt16(off, le);
+      case 4: case 11: return dv.getUint16(off, le);
+      case 5: return dv.getInt32(off, le);
+      case 6: case 12: return dv.getUint32(off, le);
+      case 8: return dv.getFloat32(off, le);
+      case 7: { let s = ''; for (let i = 0; i < size; i++) { const c = dv.getUint8(off + i); if (!c) break; s += String.fromCharCode(c); } try { return decodeURIComponent(escape(s)); } catch { return s; } }
+      default: return null;
+    }
+  };
+  while (o < end) {
+    const h = dv.getUint8(o++);
+    if (h & 0x80) {                                   // gecomprimeerde tijdstempel → gewoon databericht
+      const d = defs[(h >> 5) & 3]; if (!d) throw new Error('FIT-bestand is beschadigd'); o += d.size; continue;
+    }
+    const local = h & 0x0f;
+    if (h & 0x40) {                                   // definitie
+      const le = dv.getUint8(o + 1) === 0, global = dv.getUint16(o + 2, le), n = dv.getUint8(o + 4); o += 5;
+      const fields = []; let size = 0;
+      for (let i = 0; i < n; i++, o += 3) { const f = { num: dv.getUint8(o), size: dv.getUint8(o + 1), base: dv.getUint8(o + 2), off: size }; size += f.size; fields.push(f); }
+      if (h & 0x20) { const dn = dv.getUint8(o++); for (let i = 0; i < dn; i++, o += 3) size += dv.getUint8(o + 1); }   // developer-velden overslaan
+      defs[local] = { le, global, fields, size };
+    } else {                                          // data
+      const d = defs[local]; if (!d) throw new Error('FIT-bestand is beschadigd');
+      if (d.global === 26 || d.global === 27) {
+        const m = { global: d.global };
+        for (const f of d.fields) m[f.num] = readField(o + f.off, f.size, f.base, d.le);
+        msgs.push(m);
+      }
+      o += d.size;
+    }
+  }
+  const INV = 0xffffffff, thr = speedFromPace(settings.threshold) || 13.3, notes = [];
+  const name = (msgs.find(m => m.global === 26) || {})[8] || 'FIT-training';
+  const raw = msgs.filter(m => m.global === 27);
+  if (!raw.length) throw new Error('Geen trainingsstappen gevonden. Is dit een trainingsbestand (workout) en geen opgenomen activiteit?');
+  let guessed = 0;
+  const toStep = m => {
+    const intensity = m[7], dt = m[1], dval = m[2];
+    const label = (m[0] && String(m[0]).trim()) || ['Inspanning', 'Rust', 'Opwarmen', 'Uitlopen', 'Herstel', 'Interval'][intensity] || 'Stap';
+    let kind, value;
+    if (dt === 0) { kind = 'time'; value = dval / 1000; }
+    else if (dt === 1) { kind = 'distance'; value = dval / 100; }
+    else { kind = 'time'; value = 300; notes.push(`"${label}": geen vaste duur in het bestand → 5:00 aangenomen.`); }
+    let speed = null;
+    const lo = m[5], hi = m[6];
+    if (m[3] === 0 && lo != null && hi != null && lo !== INV && hi !== INV && hi > 0) speed = (lo + hi) / 2 / 1000 * 3.6;   // doel = snelheid (mm/s)
+    if (!speed || speed < 1 || speed > 30) { speed = thr * ({ 1: 0.6, 2: 0.7, 3: 0.7, 4: 0.6 }[intensity] ?? 0.9); guessed++; }
+    return { label: label.replace(/:/g, ' '), kind, value: Math.round(value), speed: round1(speed), incline: null };
+  };
+  const conv = raw.map(m => m[1] === 6 ? null : toStep(m)), steps = [];
+  raw.forEach((m, i) => {
+    if (m[1] === 6) {                                 // herhaal vanaf stap m[2], in totaal m[4] keer
+      const fromIdx = raw.findIndex(x => x[254] === m[2]), from = fromIdx >= 0 ? fromIdx : m[2], times = Math.max(1, m[4] || 1);
+      const block = conv.slice(from, i).filter(Boolean);
+      steps.splice(steps.length - block.length, block.length);          // eerste doorloop vervangen door genummerde herhalingen
+      for (let r = 1; r <= times; r++) block.forEach(s => steps.push({ ...s, label: `${s.label} ${r}/${times}` }));
+    } else steps.push(conv[i]);
+  });
+  if (guessed) notes.push(`${guessed} ${guessed === 1 ? 'stap heeft' : 'stappen hebben'} geen snelheidsdoel (bv. hartslag of vrij): snelheid geschat uit je drempeltempo. Controleer ze in de editor.`);
+  return { name: String(name).trim() || 'FIT-training', steps: steps.filter(s => s.value > 0), notes };
 }
 
 function parseJson(text) {
@@ -608,7 +741,128 @@ Uitlopen: 5min @ 8.5 km/h 0%`;
 let library = store.get('library', null);
 if (!library) library = [{ id: 'sample', source: SAMPLE }];
 let selectedId = library[0]?.id;
-const saveLib = () => store.set('library', library);
+/* ====================== Account en synchronisatie ======================
+   Zonder account werkt alles zoals voorheen: de bibliotheek staat alleen in deze browser.
+   Met account wordt ze samengevoegd met de kopie op de sync-server (laatste wijziging wint per training). */
+const DEFAULT_SYNC_URL = '';                     // adres van de sync-server (Cloudflare Worker), leeg = nog niet geactiveerd
+let syncUrl = store.get('syncUrl', '') || DEFAULT_SYNC_URL;
+let account = store.get('account', null);        // { email, token }
+let tombstones = store.get('tombstones', {});    // { id: tijdstip van verwijderen }
+let lastSources = Object.fromEntries(library.map(i => [i.id, i.source]));
+const syncState = { busy: false, last: store.get('lastSync', 0), error: '', timer: null };
+
+function saveLib() {
+  // wijzigingen t.o.v. de vorige opslag bijhouden: gewijzigd/nieuw → updatedAt, verdwenen → tombstone
+  const now = Date.now(), ids = new Set(library.map(i => i.id));
+  for (const it of library) if (lastSources[it.id] !== it.source) { it.updatedAt = now; delete tombstones[it.id]; }
+  for (const id of Object.keys(lastSources)) if (!ids.has(id)) tombstones[id] = now;
+  lastSources = Object.fromEntries(library.map(i => [i.id, i.source]));
+  store.set('library', library); store.set('tombstones', tombstones);
+  scheduleSync();
+}
+function scheduleSync(ms = 1500) {
+  if (!account || !syncUrl) return;
+  clearTimeout(syncState.timer); syncState.timer = setTimeout(syncNow, ms);
+}
+async function api(method, path, body, token) {
+  let r;
+  try {
+    r = await fetch(syncUrl.replace(/\/+$/, '') + path, { method,
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+      body: body ? JSON.stringify(body) : undefined });
+  } catch { throw new Error('Geen verbinding met de sync-server.'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(j.error || `Serverfout (${r.status}).`), { status: r.status });
+  return j;
+}
+function mergeLibraries(localItems, localTomb, remoteItems, remoteTomb) {
+  const tomb = { ...remoteTomb };
+  for (const [id, ts] of Object.entries(localTomb)) tomb[id] = Math.max(tomb[id] || 0, ts);
+  const byId = new Map();
+  for (const it of remoteItems) byId.set(it.id, { id: it.id, source: it.source, updatedAt: it.updatedAt || 0 });
+  for (const it of localItems) { const o = byId.get(it.id); if (!o || (it.updatedAt || 0) >= o.updatedAt) byId.set(it.id, { id: it.id, source: it.source, updatedAt: it.updatedAt || 0 }); }
+  const order = [...localItems.map(i => i.id), ...remoteItems.map(i => i.id)].filter((id, i, a) => a.indexOf(id) === i);
+  const items = order.map(id => byId.get(id)).filter(it => !(tomb[it.id] && tomb[it.id] >= it.updatedAt));
+  const cutoff = Date.now() - 90 * 864e5;        // oude verwijdermarkeringen opruimen
+  for (const id of Object.keys(tomb)) if (tomb[id] < cutoff || items.some(i => i.id === id)) delete tomb[id];
+  return { items, tombstones: tomb };
+}
+const libKey = (items, tomb) => JSON.stringify([items.map(i => [i.id, i.source, i.updatedAt || 0]), Object.entries(tomb).sort()]);
+async function syncNow() {
+  if (!account || !syncUrl || syncState.busy) return;
+  if (typeof run !== 'undefined' && run.state === 'running') return scheduleSync(60000);   // niet tijdens het lopen
+  syncState.busy = true; syncState.error = ''; renderAccount();
+  try {
+    const remote = await api('GET', '/library', null, account.token);
+    const m = mergeLibraries(library, tombstones, remote.items || [], remote.tombstones || {});
+    if (libKey(m.items, m.tombstones) !== libKey(remote.items || [], remote.tombstones || {}))
+      await api('PUT', '/library', { items: m.items, tombstones: m.tombstones }, account.token);
+    if (libKey(m.items, m.tombstones) !== libKey(library, tombstones)) {
+      const dirty = isDirty();
+      library = m.items; tombstones = m.tombstones;
+      lastSources = Object.fromEntries(library.map(i => [i.id, i.source]));
+      store.set('library', library); store.set('tombstones', tombstones);
+      if (!library.some(i => i.id === selectedId)) selectedId = library[0]?.id;
+      if (!dirty) $('editor').value = library.find(i => i.id === selectedId)?.source || '';
+      renderLib(); updatePreview(); updateDirty();
+    }
+    syncState.last = Date.now(); store.set('lastSync', syncState.last);
+  } catch (e) {
+    if (e.status === 401) { account = null; store.set('account', null); syncState.error = 'Je aanmelding is verlopen. Meld opnieuw aan.'; }
+    else syncState.error = e.message;
+  }
+  syncState.busy = false; renderAccount();
+}
+async function accountSubmit(mode) {
+  const email = $('accEmail').value.trim(), password = $('accPass').value, msg = $('accMsg');
+  msg.textContent = '';
+  if (!email || !password) { msg.textContent = 'Vul je e-mailadres en wachtwoord in.'; return; }
+  try {
+    const body = { email, password }; if (mode === 'register') body.invite = $('accInvite').value.trim();
+    const j = await api('POST', mode === 'register' ? '/register' : '/login', body);
+    account = { email: email.toLowerCase(), token: j.token }; store.set('account', account); store.set('welcomed', true);
+    renderAccount(); await syncNow();
+  } catch (e) { msg.textContent = e.message; }
+}
+async function accountLogout() {
+  if (!confirm('Afmelden? Je trainingen blijven op dit toestel staan, maar worden niet meer gesynchroniseerd.')) return;
+  try { await api('POST', '/logout', null, account.token); } catch {}
+  account = null; store.set('account', null); renderAccount();
+}
+function renderAccount() {
+  const box = $('accountBox'); if (!box) return;
+  $('syncUrl').value = syncUrl;
+  if (!syncUrl) {
+    box.innerHTML = '<p class="small muted" style="margin:0">Synchronisatie is nog niet geactiveerd. Je trainingen worden alleen op dit toestel bewaard.</p>';
+  } else if (account) {
+    const when = syncState.busy ? 'bezig met synchroniseren…' : syncState.last ? 'laatst gesynchroniseerd om ' + new Date(syncState.last).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' }) : 'nog niet gesynchroniseerd';
+    box.innerHTML = `<p style="margin:0 0 8px"><span style="color:var(--ok)">✔ Aangemeld als <b></b></span><br><span class="small muted">${when}</span></p>
+      <p class="err" style="margin:0 0 8px"></p>
+      <div class="row"><button class="btn" id="btnSyncNow">Nu synchroniseren</button><button class="btn" id="btnLogout">Afmelden</button></div>`;
+    box.querySelector('b').textContent = account.email; box.querySelector('.err').textContent = syncState.error;
+    $('btnSyncNow').onclick = syncNow; $('btnLogout').onclick = accountLogout;
+  } else {
+    if ($('accEmail')) { $('accMsg').textContent = syncState.error || $('accMsg').textContent; return; }   // formulier niet hertekenen tijdens het typen
+    box.innerHTML = `<p class="small muted" style="margin:0 0 10px">Je gebruikt de app zonder account: je trainingen staan alleen op dit toestel. Met een account zie je dezelfde trainingen op je pc, gsm en tablet.</p>
+      <form id="accForm" class="list" style="max-width:420px">
+        <input id="accEmail" type="email" autocomplete="username" placeholder="E-mailadres" required>
+        <input id="accPass" type="password" autocomplete="current-password" placeholder="Wachtwoord (minstens 8 tekens)" required>
+        <input id="accInvite" placeholder="Uitnodigingscode (alleen voor een nieuw account)">
+        <div class="row"><button class="btn primary" type="submit">Aanmelden</button><button class="btn" type="button" id="btnRegister">Account maken</button></div>
+        <div id="accMsg" class="err"></div>
+      </form>`;
+    $('accMsg').textContent = syncState.error;
+    $('accForm').onsubmit = e => { e.preventDefault(); accountSubmit('login'); };
+    $('btnRegister').onclick = () => accountSubmit('register');
+  }
+}
+function maybeWelcome() {
+  if (!syncUrl || account || store.get('welcomed', false)) return;
+  const dlg = $('welcomeDlg');
+  $('welcomeLogin').onclick = () => { store.set('welcomed', true); dlg.close(); switchTab('set'); $('accountCard').scrollIntoView({ block: 'start' }); $('accEmail')?.focus(); };
+  $('welcomeSkip').onclick = () => { store.set('welcomed', true); dlg.close(); };
+  dlg.showModal();
+}
 
 function renderRunSelect() {
   const sel = $('runSelect'), cur = run.libId;
@@ -713,10 +967,9 @@ function stepType(label) {
 }
 const KIND_HEX = { warm: '#60a5fa', work: '#f97316', rest: '#64748b', cool: '#a78bfa' };
 // Inspanning krijgt een kleur volgens intensiteit: snelheid t.o.v. het drempeltempo uit Instellingen
-const WORK_HEX = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#991b1b'];   // groen → geel → oranje → rood → donkerrood
 function workColor(speed) {
-  const r = speed / (speedFromPace(settings.threshold) || 13.3);
-  return WORK_HEX[r < 0.80 ? 0 : r < 0.90 ? 1 : r < 1.00 ? 2 : r < 1.10 ? 3 : 4];
+  const z = zones();
+  return ZONE_HEX[speed <= z[0] ? 0 : speed <= z[1] ? 1 : speed <= z[2] ? 2 : speed <= z[3] ? 3 : 4];
 }
 const kindColor = s => { const t = stepType(s.label); return t === 'work' ? workColor(s.speed) : KIND_HEX[t]; };
 function drawChart(canvas, w, progressSec, intensity = 1) {
@@ -1180,8 +1433,8 @@ function drawRunImage(r) {
     g.fillText(v, x + 28, y + 118);
   });
   // grafiek: geplande stappen als blokken + werkelijke snelheid als lijn
-  const cx = 64, cy = 620, cw = W - 128, ch = 330;
-  g.fillStyle = COL.panel; rr(cx - 24, cy - 24, cw + 48, ch + 48, 22);
+  const cx = 64, cy = 620, cw = W - 128, ch = 290;
+  g.fillStyle = COL.panel; rr(cx - 24, cy - 24, cw + 48, ch + 48 + 40, 22);
   const speeds = r.samples.map(s => s.speed);
   const stepSp = r.steps ? r.steps.map(s => s.speed) : [];
   const maxS = Math.max(1, ...speeds, ...stepSp) * 1.08, minS = 0;
@@ -1191,16 +1444,26 @@ function drawRunImage(r) {
     const maxStep = Math.max(...stepSp); let x = cx;
     r.steps.forEach((s, i) => {
       const w = secs[i] / tot * cw, ratio = s.speed / maxStep;
-      g.fillStyle = s.label ? kindColor(s) : COL.z[ratio > .92 ? 4 : ratio > .82 ? 3 : ratio > .72 ? 2 : ratio > .6 ? 1 : 0]; g.globalAlpha = .6;
+      // zelfde kleuren als in de app; oudere trainingen zonder stapnaam krijgen de zonekleur van hun snelheid
+      g.fillStyle = s.label ? kindColor(s) : workColor(s.speed);
       g.fillRect(x, yOf(s.speed), Math.max(1, w - 2), cy + ch - yOf(s.speed)); x += w;
     });
-    g.globalAlpha = 1;
+    // legende
+    const used = new Set(r.steps.map(s => s.label ? stepType(s.label) : 'work'));
+    const leg = [['warm', 'Opwarmen'], ['work', 'Inspanning'], ['rest', 'Rust'], ['cool', 'Uitlopen']].filter(([k]) => used.has(k));
+    g.font = `500 24px ${F}`; let lx = cx;
+    for (const [k, name] of leg) {
+      if (k === 'work') { const gr = g.createLinearGradient(lx, 0, lx + 70, 0); ZONE_HEX.forEach((h, i) => gr.addColorStop(i / 4, h)); g.fillStyle = gr; g.fillRect(lx, cy + ch + 22, 70, 20); lx += 82; }
+      else { g.fillStyle = KIND_HEX[k]; g.fillRect(lx, cy + ch + 22, 20, 20); lx += 32; }
+      g.fillStyle = COL.muted; g.fillText(name, lx, cy + ch + 41); lx += g.measureText(name).width + 36;
+    }
   }
   if (r.samples.length > 1) {
     const T = r.samples[r.samples.length - 1].t || 1;
-    g.strokeStyle = COL.text; g.lineWidth = 4; g.lineJoin = 'round'; g.beginPath();
-    r.samples.forEach((s, i) => { const x = cx + s.t / T * cw, y = yOf(s.speed); i ? g.lineTo(x, y) : g.moveTo(x, y); });
-    g.stroke();
+    const line = () => { g.beginPath(); r.samples.forEach((s, i) => { const x = cx + s.t / T * cw, y = yOf(s.speed); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); };
+    g.lineJoin = 'round';
+    g.strokeStyle = 'rgba(0,0,0,.55)'; g.lineWidth = 8; line();      // donkere rand zodat de lijn op elke kleur leesbaar blijft
+    g.strokeStyle = '#ffffff'; g.lineWidth = 4; line();
   }
   // voet
   g.fillStyle = COL.accent; g.font = `700 30px ${F}`; g.fillText('Loopband Coach', 64, H - 40);
@@ -1410,9 +1673,14 @@ $('btnExportJson').onclick = () => { const w = updatePreview(); if (w) download(
 $('fileImport').onchange = async e => {
   for (const f of e.target.files) {
     try {
-      const txt = await f.text(), ext = f.name.split('.').pop().toLowerCase();
+      const ext = f.name.split('.').pop().toLowerCase();
+      const txt = ext === 'fit' ? '' : await f.text();
       let src;
-      if (ext === 'zwo' || ext === 'xml') src = toText(parseZwo(txt));
+      if (ext === 'fit') {
+        const w = parseFit(await f.arrayBuffer()); src = toText(w);
+        if (w.notes.length) alert(`${f.name}:\n• ${w.notes.join('\n• ')}`);
+      }
+      else if (ext === 'zwo' || ext === 'xml') src = toText(parseZwo(txt));
       else if (ext === 'json') src = toText(parseJson(txt));
       else { parseText(txt); src = txt; }
       src = await ensureIncline(src, f.name);
@@ -1484,6 +1752,16 @@ window.addEventListener('resize', () => { updatePreview(); renderRun(); });
 window.addEventListener('beforeunload', e => { if (run.state === 'running') { e.preventDefault(); e.returnValue = ''; } });
 
 bindSettings();
+renderZones();
+$('setThreshold').addEventListener('change', () => { renderZones(); zonesChanged(); });
+$('btnZonesReset').onclick = () => { delete settings.zones; store.set('settings', settings); $('zoneMsg').textContent = ''; renderZones(); zonesChanged(); };
+$('btnSyncUrl').onclick = () => {
+  const v = $('syncUrl').value.trim();
+  if (v && !/^https:\/\/|^http:\/\/localhost/.test(v)) return alert('Het adres moet met https:// beginnen.');
+  syncUrl = v || DEFAULT_SYNC_URL; store.set('syncUrl', v); $('accountBox').innerHTML = ''; renderAccount(); maybeWelcome();
+};
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(300); });
+setInterval(() => scheduleSync(0), 120000);
 renderStravaSettings();
 renderExport();
 handleStravaCallback();
@@ -1492,6 +1770,9 @@ $('editor').value = library.find(i => i.id === selectedId)?.source || '';
 updatePreview();
 setTmStatus();
 setInterval(tick, 250);
+renderAccount();
+maybeWelcome();
+scheduleSync(500);
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
