@@ -122,7 +122,7 @@ pre.help { background: var(--panel2); padding: 10px; border-radius: 8px; overflo
 </head>
 <body>
 <header>
-  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.18</span></h1>
+  <h1>🏃 Loopband Coach <span class="small muted ver" style="font-weight:400">v0.19</span></h1>
   <span class="status" title="Loopband"><span id="dotTm" class="dot"></span><span id="txtTm">Geen loopband</span></span>
   <span class="status" title="Hartslagband"><span id="dotHr" class="dot"></span><span id="txtHr">Geen HR</span></span>
   <nav>
@@ -744,7 +744,7 @@ let selectedId = library[0]?.id;
 /* ====================== Account en synchronisatie ======================
    Zonder account werkt alles zoals voorheen: de bibliotheek staat alleen in deze browser.
    Met account wordt ze samengevoegd met de kopie op de sync-server (laatste wijziging wint per training). */
-const DEFAULT_SYNC_URL = '';                     // adres van de sync-server (Cloudflare Worker), leeg = nog niet geactiveerd
+const DEFAULT_SYNC_URL = 'https://damp-shape-f33a.jonasclaus93.workers.dev';                     // adres van de sync-server (Cloudflare Worker), leeg = nog niet geactiveerd
 let syncUrl = store.get('syncUrl', '') || DEFAULT_SYNC_URL;
 let account = store.get('account', null);        // { email, token }
 let tombstones = store.get('tombstones', {});    // { id: tijdstip van verwijderen }
