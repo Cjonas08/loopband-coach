@@ -1567,6 +1567,12 @@ function renderStravaSettings() {
   }
   $('stravaCallback').textContent = location.hostname || 'localhost';
 }
+// Strava-id's kunnen vanaf juni 2027 64-bit zijn: groter dan wat een JavaScript-getal exact
+// kan bewaren (2^53). Daarom lezen we id en activity_id als tekst, vóór JSON.parse ze afrondt.
+async function stravaJson(r) {
+  const text = await r.text().catch(() => '');
+  try { return JSON.parse(text.replace(/("(?:activity_)?id"\s*:\s*)(-?\d+)/g, '$1"$2"')) || {}; } catch { return {}; }
+}
 function stravaConnect(key) {
   const p = strava[key];
   if (!p.clientId || !p.clientSecret) return alert(`Vul eerst Client ID en Client Secret in voor ${p.name}.`);
@@ -1616,18 +1622,18 @@ async function uploadToStrava(key) {
     fd.append('trainer', '1');
     fd.append('external_id', `loopband-${lastRun.startedAt}-${key}`);
     let r = await fetch('https://www.strava.com/api/v3/uploads', { method: 'POST', headers: { Authorization: 'Bearer ' + p.access_token }, body: fd });
-    let j = await r.json().catch(() => ({}));
+    let j = await stravaJson(r);
     if (!r.ok) throw new Error((j.message || `fout ${r.status}`) + (j.errors ? ': ' + JSON.stringify(j.errors) : ''));
     // Strava verwerkt de upload asynchroon → status opvragen tot er een activiteit is
     for (let i = 0; i < 20 && !j.activity_id && !j.error; i++) {
       say(`Strava verwerkt de training… (${j.status || 'bezig'})`);
       await new Promise(res => setTimeout(res, 2000));
       r = await fetch(`https://www.strava.com/api/v3/uploads/${j.id_str || j.id}`, { headers: { Authorization: 'Bearer ' + p.access_token } });
-      j = await r.json().catch(() => ({}));
+      j = await stravaJson(r);
     }
     if (j.error) throw new Error(j.error);
     if (!j.activity_id) throw new Error('Strava is nog bezig met verwerken — kijk binnen een minuut in Strava.');
-    lastRun.uploaded = lastRun.uploaded || {}; lastRun.uploaded[key] = j.activity_id; store.set('lastRun', lastRun);
+    lastRun.uploaded = lastRun.uploaded || {}; lastRun.uploaded[key] = String(j.activity_id_str || j.activity_id); store.set('lastRun', lastRun);
     say(`✔ Geüpload naar Strava van ${p.name}.`, 'var(--ok)');
     renderExport();
   } catch (e) { say('Strava-upload mislukt: ' + e.message, 'var(--danger)'); }
